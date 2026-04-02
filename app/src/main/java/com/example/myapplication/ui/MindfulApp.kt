@@ -17,7 +17,7 @@ import com.example.myapplication.ui.resources.ResourcesScreen
 fun MindfulApp() {
     val navController = rememberNavController()
 
-    NavHost(navController = navController, startDestination = "home") {
+    NavHost(navController = navController, startDestination = "auth") {
         composable("auth") { AuthScreen(navController) }
         composable("home") { HomeScreen(navController) }
         composable("journal") { JournalScreen(navController) }
