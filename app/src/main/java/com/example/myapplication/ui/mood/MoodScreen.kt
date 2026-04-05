@@ -10,9 +10,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -43,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.sp
 import androidx.compose.material3.Icon
+import kotlinx.coroutines.selects.select
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -51,7 +54,7 @@ import androidx.compose.material3.Icon
 fun MoodScreen(navController: NavHostController, viewModel: MoodViewModel = viewModel()
 ) {
     val currentMonth = YearMonth.now()
-    val days = buildCalendarDays(currentMonth)
+    val days = makeCalendar(currentMonth)
     var showDialog by remember{ mutableStateOf(false) }
     var selectedDate by remember { mutableStateOf<LocalDate?>(null) }
 
@@ -84,7 +87,7 @@ fun MoodScreen(navController: NavHostController, viewModel: MoodViewModel = view
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(top = 38.dp)
         )
-        DaysOfWeekHeader()
+        DaysHeader()
         LazyVerticalGrid(
             columns = GridCells.Fixed(7), // 7 for each day of week
             modifier = Modifier.fillMaxWidth(), // fills entire screen
@@ -102,11 +105,22 @@ fun MoodScreen(navController: NavHostController, viewModel: MoodViewModel = view
                         date = date, // day of week
                         mood = mood, // mood for that day
                         onClick = {
-                            // makes the cell clickable, will come back to this to add mood desc
+                            selectedDate = date
                         }
                     )
                 }
             }
+        }
+        Spacer(modifier = Modifier.height(24.dp))
+        selectedDate?.let { date -> val mood = viewModel.getMoodForDate(date)
+            Text(
+                text = if (mood != null) {
+                    "Mood on ${date.monthValue}/${date.dayOfMonth}: ${mood.label}"
+                } else {
+                    "Mood not logged for that day"
+                }, color = Color.Black
+
+            )
         }
         if (showDialog){ // mood logging logic
             MoodDialog(
@@ -120,7 +134,7 @@ fun MoodScreen(navController: NavHostController, viewModel: MoodViewModel = view
 }
 
 @RequiresApi(Build.VERSION_CODES.O)
-fun buildCalendarDays(currentMonth: YearMonth): List<LocalDate?> { // build calendar logic
+fun makeCalendar(currentMonth: YearMonth): List<LocalDate?> { // build calendar logic
     val firstOfMonth = currentMonth.atDay(1) // first day of month
     val daysInMonth = currentMonth.lengthOfMonth() // how long month is
 
@@ -148,17 +162,17 @@ fun buildCalendarDays(currentMonth: YearMonth): List<LocalDate?> { // build cale
 }
 
 @Composable
-fun DaysOfWeekHeader() {
-    val daysOfWeek = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat") // Simple header, can change if needed
+fun DaysHeader() {
+    val days = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat") // Simple header, can change if needed
 
     LazyVerticalGrid(
-        columns = GridCells.Fixed(7), // seven days
-        userScrollEnabled = false,
+        columns = GridCells.Fixed(7),
+        userScrollEnabled = false, // FUTURE ME, CHANGE THIS WHEN ADDING MORE MONTHS!
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(4.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items(daysOfWeek) { day ->
+        items(days) { day ->
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier.fillMaxWidth()

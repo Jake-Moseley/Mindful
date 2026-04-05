@@ -12,7 +12,7 @@ import java.time.LocalDate
 class MoodViewModel : ViewModel() {
     var moodEntries by mutableStateOf(
         listOf(
-            MoodEntry(LocalDate.now().minusDays(3), MoodType.EVIL)
+            MoodEntry(LocalDate.now().minusDays(3), MoodType.TIRED)
         )
     )
         private set
