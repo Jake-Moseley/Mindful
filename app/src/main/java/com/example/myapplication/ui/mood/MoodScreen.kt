@@ -1,134 +1,201 @@
 package com.example.myapplication.ui.mood
 
+import android.os.Build
+import androidx.annotation.RequiresApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.material3.ElevatedButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
+import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.YearMonth
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 
-enum class MoodType(val label: String, val emoji: String) {
-    HAPPY("Happy", "\uD83D\uDE0A"),
-    SAD("Sad", "\uD83D\uDE22"),
-    FRUSTRATED("Frustrated", "\uD83D\uDE20")
-}
-
-data class MoodEntry(
-    val date: String,
-    val mood: MoodType
-)
-
-@OptIn(ExperimentalMaterial3Api::class)
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun MoodScreen(navController: NavController) {
-    val moodHistory = remember {
-        mutableStateListOf(
-            MoodEntry("04/03/2026", MoodType.HAPPY),
-            MoodEntry("04/04/2026", MoodType.FRUSTRATED)
-        )
-    }
-    var showDialog by remember { mutableStateOf(false) }
+fun MoodScreen(
+    navController: NavHostController,
+    viewModel: MoodViewModel = viewModel()
+) {
+    val currentMonth = YearMonth.now()
+    val days = buildCalendarDays(currentMonth)
+    var showDialog by remember{ mutableStateOf(false) }
+    var selectedDate by remember { mutableStateOf<LocalDate?>(null) }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        TopAppBar(
-            title = { Text("Mood Tracker") },
-            navigationIcon = {
-                IconButton(onClick = { navController.popBackStack() }) {
-                    Icon(Icons.Default.ArrowDropDown, contentDescription = "Back")
-                }
-            }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White)
+            .padding(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "Mood Tracker",
+            color = Color.Black,
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(top = 40.dp)
+
         )
-        Column(
-            modifier = Modifier.fillMaxSize().padding(16.dp)
+        ElevatedButton(
+            onClick = {
+                selectedDate = LocalDate.now()
+                showDialog = true
+            },
+            modifier = Modifier.fillMaxWidth().padding(16.dp)
         ) {
-            Text("Mood History")
-            Spacer(modifier = Modifier.height(12.dp))
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                verticalArrangement =  Arrangement.spacedBy(8.dp)
-            ) {
-                items(moodHistory.sortedByDescending { it.date }) {
-                    entry -> Card(
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(entry.date)
-                            Text("${entry.mood.emoji} ${entry.mood.label}")
+            Text("Log Your Mood!")
+        }
+        Text(
+            text = "${currentMonth.month.name.lowercase().replaceFirstChar { it.uppercase() }} ${currentMonth.year}",
+            color = Color.Black,
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(top = 38.dp)
+
+        )
+        DaysOfWeekHeader()
+
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(7),
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(days) { date: LocalDate? ->
+                if (date == null) {
+                    Box(
+                        modifier = Modifier.aspectRatio(1f)
+                    )
+                } else {
+                    val mood = viewModel.getMoodForDate(date)
+
+                    CalendarDayCell(
+                        date = date,
+                        mood = mood,
+                        onClick = {
                         }
+                    )
                 }
             }
         }
-            Spacer(modifier = Modifier.height(16.dp))
-            Button(
-                onClick =  { showDialog = true },
+        if (showDialog){
+            MoodDialog(
+                selectedDate = selectedDate,
+                onDismiss = { showDialog = false },
+                onMoodSelected = {mood -> viewModel.logMood(selectedDate, mood)
+                    showDialog = false }
+            )
+        }
+    }
+}
+
+@RequiresApi(Build.VERSION_CODES.O)
+fun buildCalendarDays(currentMonth: YearMonth): List<LocalDate?> {
+    val firstOfMonth = currentMonth.atDay(1)
+    val daysInMonth = currentMonth.lengthOfMonth()
+
+    val firstDayIndex = when (firstOfMonth.dayOfWeek) {
+        DayOfWeek.SUNDAY -> 0
+        DayOfWeek.MONDAY -> 1
+        DayOfWeek.TUESDAY -> 2
+        DayOfWeek.WEDNESDAY -> 3
+        DayOfWeek.THURSDAY -> 4
+        DayOfWeek.FRIDAY -> 5
+        DayOfWeek.SATURDAY -> 6
+    }
+
+    val days = mutableListOf<LocalDate?>()
+
+    repeat(firstDayIndex) {
+        days.add(null)
+    }
+
+    for (day in 1..daysInMonth) {
+        days.add(currentMonth.atDay(day))
+    }
+
+    return days
+}
+
+@Composable
+fun DaysOfWeekHeader() {
+    val daysOfWeek = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
+
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(7),
+        userScrollEnabled = false,
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items(daysOfWeek) { day ->
+            Box(
+                contentAlignment = Alignment.Center,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Log Your Mood!")
+                Text(
+                    text = day,
+                    color = Color.LightGray,
+                    fontWeight = FontWeight.SemiBold
+                )
             }
         }
     }
-    if (showDialog) {
-        AlertDialog(
-            onDismissRequest = { showDialog = false},
-            title = { Text("What is your mood today?")},
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    MoodType.entries.forEach { mood ->
-                        OutlinedButton(
-                            onClick = {
-                                val today = SimpleDateFormat("MM/dd/yyyy", Locale.getDefault())
-                                    .format(Date())
-
-                                moodHistory.removeAll { it.date == today }
-                                moodHistory.add(MoodEntry(today, mood))
-
-                                showDialog = false
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("${mood.emoji} ${mood.label}")
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showDialog = false }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
+@Composable
+fun CalendarDayCell(
+    date: LocalDate,
+    mood: MoodType?,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .aspectRatio(1f)
+            .border(1.dp, Color.DarkGray)
+            .clickable { onClick() }
+            .padding(6.dp)
+    ) {
+        Text(
+            text = date.dayOfMonth.toString(),
+            color = Color.White,
+            modifier = Modifier.align(Alignment.TopStart)
+        )
+
+        if (mood != null) {
+            Text(
+                text = mood.emoji,
+                modifier = Modifier.align(Alignment.Center),
+                style = MaterialTheme.typography.headlineSmall
+            )
+        }
+    }
+}
