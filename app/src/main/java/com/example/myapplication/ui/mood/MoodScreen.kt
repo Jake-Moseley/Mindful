@@ -47,65 +47,56 @@ fun MoodScreen(
     var showDialog by remember{ mutableStateOf(false) }
     var selectedDate by remember { mutableStateOf<LocalDate?>(null) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.White)
-            .padding(8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
+    // First initial column that has houses the mood tracker title and log your mood button
+    Column(modifier = Modifier.fillMaxSize().background(Color.White).padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = "Mood Tracker",
             color = Color.Black,
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(top = 40.dp)
-
+            modifier = Modifier.padding(top = 40.dp) // modify to change location of title
         )
         ElevatedButton(
             onClick = {
                 selectedDate = LocalDate.now()
-                showDialog = true
+                showDialog = true // Pops up the mood logging functionality
             },
-            modifier = Modifier.fillMaxWidth().padding(16.dp)
+            modifier = Modifier.fillMaxWidth().padding(16.dp) //fills button from side to side
         ) {
-            Text("Log Your Mood!")
+            Text("Log Your Mood!") // Text for the button
         }
-        Text(
-            text = "${currentMonth.month.name.lowercase().replaceFirstChar { it.uppercase() }} ${currentMonth.year}",
+        Text( // calendar header
+            text = "${currentMonth.month.name.lowercase().replaceFirstChar { it.uppercase() }} ${currentMonth.year}", // Month and Year above calendar
             color = Color.Black,
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(top = 38.dp)
-
         )
         DaysOfWeekHeader()
-
         LazyVerticalGrid(
-            columns = GridCells.Fixed(7),
-            modifier = Modifier.fillMaxWidth(),
+            columns = GridCells.Fixed(7), // 7 for each day of week
+            modifier = Modifier.fillMaxWidth(), // fills entire screen
             contentPadding = PaddingValues(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(days) { date: LocalDate? ->
-                if (date == null) {
+            items(days) { date: LocalDate? -> if (date == null) {
                     Box(
-                        modifier = Modifier.aspectRatio(1f)
+                        modifier = Modifier.aspectRatio(1f) // gives us our square shape for calendar
                     )
                 } else {
-                    val mood = viewModel.getMoodForDate(date)
-
+                    val mood = viewModel.getMoodForDate(date) // grabbing mood from viewmodel
                     CalendarDayCell(
-                        date = date,
-                        mood = mood,
+                        date = date, // day of week
+                        mood = mood, // mood for that day
                         onClick = {
+                            // makes the cell clickable, will come back to this to add mood desc
                         }
                     )
                 }
             }
         }
-        if (showDialog){
+        if (showDialog){ // mood logging logic
             MoodDialog(
                 selectedDate = selectedDate,
                 onDismiss = { showDialog = false },
@@ -117,11 +108,11 @@ fun MoodScreen(
 }
 
 @RequiresApi(Build.VERSION_CODES.O)
-fun buildCalendarDays(currentMonth: YearMonth): List<LocalDate?> {
-    val firstOfMonth = currentMonth.atDay(1)
-    val daysInMonth = currentMonth.lengthOfMonth()
+fun buildCalendarDays(currentMonth: YearMonth): List<LocalDate?> { // build calendar logic
+    val firstOfMonth = currentMonth.atDay(1) // first day of month
+    val daysInMonth = currentMonth.lengthOfMonth() // how long month is
 
-    val firstDayIndex = when (firstOfMonth.dayOfWeek) {
+    val firstDayIndex = when (firstOfMonth.dayOfWeek) { // which day is the first?
         DayOfWeek.SUNDAY -> 0
         DayOfWeek.MONDAY -> 1
         DayOfWeek.TUESDAY -> 2
@@ -131,25 +122,25 @@ fun buildCalendarDays(currentMonth: YearMonth): List<LocalDate?> {
         DayOfWeek.SATURDAY -> 6
     }
 
-    val days = mutableListOf<LocalDate?>()
+    val days = mutableListOf<LocalDate?>() // list for days
 
-    repeat(firstDayIndex) {
+    repeat(firstDayIndex) { // null for days before the 1st day of month
         days.add(null)
     }
 
     for (day in 1..daysInMonth) {
-        days.add(currentMonth.atDay(day))
+        days.add(currentMonth.atDay(day)) // every day in month
     }
 
-    return days
+    return days // finished list!
 }
 
 @Composable
 fun DaysOfWeekHeader() {
-    val daysOfWeek = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
+    val daysOfWeek = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat") // Simple header, can change if needed
 
     LazyVerticalGrid(
-        columns = GridCells.Fixed(7),
+        columns = GridCells.Fixed(7), // seven days
         userScrollEnabled = false,
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(4.dp),
