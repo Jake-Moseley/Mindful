@@ -11,14 +11,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -64,7 +67,7 @@ fun MoodScreen(navController: NavController) {
             title = { Text("Mood Tracker") },
             navigationIcon = {
                 IconButton(onClick = { navController.popBackStack() }) {
-                    Icon(Icons.Default.ArrowDropDown, contentDescription = "Back")
+                    Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                 }
             }
         )
@@ -78,7 +81,7 @@ fun MoodScreen(navController: NavController) {
                 verticalArrangement =  Arrangement.spacedBy(8.dp)
             ) {
                 items(moodHistory.sortedByDescending { it.date }) {
-                    entry -> Card(
+                    entry -> OutlinedCard(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
