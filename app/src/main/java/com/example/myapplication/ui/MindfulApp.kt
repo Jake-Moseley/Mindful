@@ -16,6 +16,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myapplication.ui.auth.AuthViewModel
 import com.example.myapplication.ui.quotes.QuoteScreen
 
+import com.example.myapplication.ui.text.TextScreen
 
 @Composable
 fun MindfulApp() {
@@ -26,6 +27,7 @@ fun MindfulApp() {
         composable("auth") { AuthScreen(navController, authViewModel) }
         composable("home") { HomeScreen(navController, authViewModel) }
         composable("journal") { JournalScreen(navController) }
+        composable("text") { TextScreen(navController) }
         composable("forum") { ForumScreen(navController) }
         composable("mood") { MoodScreen(navController) }
         composable("pet") { PetScreen(navController) }
