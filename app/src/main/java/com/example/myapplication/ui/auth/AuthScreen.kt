@@ -33,6 +33,7 @@ fun AuthScreen(navController: NavController, viewModel: AuthViewModel = viewMode
             }
         }
     }
+    if (uiState.isAuthenticated) return
 
     Column(
         modifier = Modifier
