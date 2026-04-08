@@ -30,9 +30,7 @@ class MainActivity : AppCompatActivity() {
     private val quotes = listOf(
         "Believe you can and you're halfway there.",
         "Your only limit is your mind.",
-        "Don't stop until you're proud.",
-        "Focus on being productive instead of busy.",
-        "Success is a journey, not a destination."
+        "Don't stop until you're proud."
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -47,7 +45,6 @@ class MainActivity : AppCompatActivity() {
 
         adapter = ForumAdapter(postList) { position ->
             val post = postList[position]
-
             if (post.isLiked) {
                 post.likes -= 1
                 post.isLiked = false
@@ -55,8 +52,7 @@ class MainActivity : AppCompatActivity() {
                 post.likes += 1
                 post.isLiked = true
             }
-
-            savePosts() // Make sure the unlike is remembered!
+            savePosts()
             adapter.notifyItemChanged(position)
         }
 
@@ -70,7 +66,8 @@ class MainActivity : AppCompatActivity() {
             val text = edtMessage.text.toString()
             if (text.isNotEmpty()) {
                 val currentTime = SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date())
-                val newPost = ForumPost("You", text, currentTime, 0)
+                // Create post with name (Make sure your name is used here!)
+                val newPost = ForumPost("Reeja", text, currentTime, 0, false)
                 postList.add(newPost)
                 savePosts()
                 adapter.notifyItemInserted(postList.size - 1)
