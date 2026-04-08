@@ -1,4 +1,4 @@
-package com.example.forumactivity
+package com.example.myapplication.ui.forum
 
 import android.graphics.Color
 import android.view.LayoutInflater
@@ -8,6 +8,7 @@ import android.widget.ImageButton
 import android.widget.TextView
 import androidx.cardview.widget.CardView
 import androidx.recyclerview.widget.RecyclerView
+import com.example.myapplication.R
 
 data class ForumPost(
     val author: String,
@@ -52,15 +53,8 @@ class ForumAdapter(
             holder.cardAvatar.setCardBackgroundColor(Color.parseColor(colors[colorIndex]))
         }
 
-        if (currentPost.isLiked) {
-            holder.btnLike.setColorFilter(Color.RED)
-        } else {
-            holder.btnLike.setColorFilter(Color.GRAY)
-        }
-
-        holder.btnLike.setOnClickListener {
-            onLikeClicked(position)
-        }
+        holder.btnLike.setColorFilter(if (currentPost.isLiked) Color.RED else Color.GRAY)
+        holder.btnLike.setOnClickListener { onLikeClicked(position) }
     }
 
     override fun getItemCount(): Int = postList.size

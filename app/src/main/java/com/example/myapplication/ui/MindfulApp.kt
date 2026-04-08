@@ -28,7 +28,7 @@ fun MindfulApp() {
         composable("home") { HomeScreen(navController, authViewModel) }
         composable("journal") { JournalScreen(navController) }
         composable("text") { TextScreen(navController) }
-        composable("forum") { ForumScreen(navController) }
+        composable("com/example/myapplication/ui/forum") { ForumScreen(navController) }
         composable("mood") { MoodScreen(navController) }
         composable("pet") { PetScreen(navController) }
         composable("goals") { GoalsScreen(navController) }

@@ -33,7 +33,7 @@ fun HomeScreen(navController: NavController, authViewModel: AuthViewModel) {
         Button(onClick = { navController.navigate("goals") }, modifier = Modifier.fillMaxWidth().padding(4.dp)) {
             Text("Goals")
         }
-        Button(onClick = { navController.navigate("forum") }, modifier = Modifier.fillMaxWidth().padding(4.dp)) {
+        Button(onClick = { navController.navigate("com/example/myapplication/ui/forum") }, modifier = Modifier.fillMaxWidth().padding(4.dp)) {
             Text("Forum")
         }
         Button(onClick = { navController.navigate("pet") }, modifier = Modifier.fillMaxWidth().padding(4.dp)) {
