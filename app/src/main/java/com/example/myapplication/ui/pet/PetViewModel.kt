@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModel
 import com.example.myapplication.data.model.Pet
 import com.example.myapplication.ui.mood.MoodType
 
-class PetViewModel : ViewModel() {
+/*class PetViewModel : ViewModel() {
   Pet( 
       name = "Fox" ,
       level = 1,
@@ -47,3 +47,4 @@ class PetViewModel : ViewModel() {
     )
   }
 }
+*/

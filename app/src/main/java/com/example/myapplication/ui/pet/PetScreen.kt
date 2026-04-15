@@ -15,7 +15,7 @@ fun PetScreen(navController: NavController) {
     }
 }
 
-*/
+/*
     Still working on it
     package com.example.myapplication.ui.pet
 
@@ -72,4 +72,4 @@ fun PetScreen(
     }
 }
 
-/*
+*/
