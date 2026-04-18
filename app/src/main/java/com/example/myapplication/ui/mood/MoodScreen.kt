@@ -44,6 +44,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.sp
 import androidx.compose.material3.Icon
+import com.example.myapplication.data.local.AppDB
+import androidx.compose.runtime.collectAsState
 // import com.example.myapplication.ui.pet.PetViewModel
 import kotlinx.coroutines.selects.select
 
@@ -51,8 +53,15 @@ import kotlinx.coroutines.selects.select
 @OptIn(ExperimentalMaterial3Api::class)
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun MoodScreen(navController: NavHostController, viewModel: MoodViewModel = viewModel()
-) {
+fun MoodScreen(navController: NavHostController) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val db = AppDB.getDatabase(context)
+    val dao = db.moodDAO()
+    val viewModel: MoodViewModel = viewModel(
+        factory = MoodViewModelFactory(dao)
+    )
+    val moodEntries by viewModel.moodEntries.collectAsState()
+    val moodMap = moodEntries.associateBy { it.date }
     val currentMonth = YearMonth.now()
     val days = makeCalendar(currentMonth)
    //  val petViewModel: PetViewModel = viewModel()
@@ -101,7 +110,7 @@ fun MoodScreen(navController: NavHostController, viewModel: MoodViewModel = view
                         modifier = Modifier.aspectRatio(1f) // gives us our square shape for calendar
                     )
                 } else {
-                    val mood = viewModel.getMoodForDate(date) // grabbing mood from viewmodel
+                val mood = moodMap[date.toString()]?.let { MoodType.fromInt(it.mood) } // grabbing mood from viewmodel
                     CalendarDayCell(
                         date = date, // day of week
                         mood = mood, // mood for that day
@@ -113,7 +122,7 @@ fun MoodScreen(navController: NavHostController, viewModel: MoodViewModel = view
             }
         }
         Spacer(modifier = Modifier.height(24.dp))
-        selectedDate?.let { date -> val mood = viewModel.getMoodForDate(date)
+        selectedDate?.let { date -> val mood = moodMap[date.toString()]?.let { MoodType.fromInt(it.mood) }
             Text(
                 text = if (mood != null) {
                     "Mood on ${date.monthValue}/${date.dayOfMonth}: ${mood.label}"

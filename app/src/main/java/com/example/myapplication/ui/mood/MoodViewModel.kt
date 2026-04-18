@@ -6,24 +6,45 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
+import com.example.myapplication.data.local.MoodDAO
+import com.example.myapplication.data.model.MoodEntry
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.WhileSubscribed
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import java.sql.Date
 import java.time.LocalDate
 
 @RequiresApi(Build.VERSION_CODES.O)
-class MoodViewModel : ViewModel() {
-    var moodEntries by mutableStateOf(
-        listOf(
-            MoodEntry(LocalDate.now().minusDays(3), MoodType.TIRED)
-        )
+class MoodViewModel(private val moodDAO: MoodDAO) : ViewModel() {
+    val moodEntries: StateFlow<List<MoodEntry>> = moodDAO.getAllMoods().stateIn( // Live mood entry updates
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
     )
-        private set
-
     fun logMood(date: LocalDate?, mood: MoodType) {
-        val updated = moodEntries.filterNot { it.date == date } + MoodEntry(date, mood)
-        moodEntries = updated.sortedByDescending { it.date }
+        if (date == null) return
+        viewModelScope.launch {
+            moodDAO.insertMood(MoodEntry(date = date.toString(), mood = mood.ordinal))
+        }
     }
-
     fun getMoodForDate(date: LocalDate): MoodType? {
-        return moodEntries.find { it.date == date }?.mood
+        val entry = moodEntries.value.find { it.date == date.toString() }
+        return entry?.let { MoodType.fromInt(it.mood) }
     }
+}
 
+class MoodViewModelFactory(
+    private val moodDAO: MoodDAO
+) : ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(MoodViewModel::class.java)) {
+            @Suppress("UNCHECKED_CAST")
+            return MoodViewModel(moodDAO) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
+    }
 }
