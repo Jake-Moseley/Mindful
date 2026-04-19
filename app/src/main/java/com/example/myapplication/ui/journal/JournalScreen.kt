@@ -3,6 +3,7 @@ package com.example.myapplication.ui.journal
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -15,7 +16,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Button
@@ -82,36 +84,60 @@ fun JournalScreen(navController: NavController) {
     val currentEntry = allEntries.find {it.date == date.toString()}
 
 
-    //new journal bar checks
-    if (currentEntry == null) //if no current entry exists -> create entry
-    {
-        Scaffold(
-            bottomBar = {
-                BottomAppBar(
-                    modifier = Modifier
-                        .wrapContentSize()
-                        .padding(16.dp)
-                ) {
-                    Button(
-                        onClick = { viewModel.CreateEntry(date) },  //on button click, create entry and pass date
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(4.dp)
-                    ) {
-                        Text("Add Entry")
+    //gets text from current entry to display when entry is clicked
+    var loadedText by remember(selectedEntry) { mutableStateOf("") }
+    LaunchedEffect(selectedEntry) {
+        loadedText = selectedEntry?.content?: ""
+    }
+
+    //formatter sets proper format and then date is parsed through to display proper format date
+    val formatter = DateTimeFormatter.ofPattern("M/d/yyyy")
+
+
+
+
+    Scaffold(
+
+        topBar = {
+            TopAppBar(
+                title = { Text("Journal") },
+                navigationIcon = {
+                    IconButton(onClick = {
+                        selectedEntry?.complete?.let {
+                            if (!it) {
+                                viewModel.SaveEntry(loadedText)
+                            }
+                        }
+                        navController.popBackStack() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                //generate demo entries
+                actions = {
+                    IconButton( onClick = { viewModel.DemoEntries() } ) {
+                        Icon(Icons.Default.Build, contentDescription = "Demo")
                     }
                 }
-            }
-        ) {}
-    } else {
-        if (!currentEntry.complete) {   //if current entry exists but isn't complete -> edit entry'
-            Scaffold(
-                bottomBar = {
-                    BottomAppBar(
-                        modifier = Modifier
-                            .wrapContentSize()
-                            .padding(16.dp)
-                    ) {
+            )
+        },
+        bottomBar = {
+            BottomAppBar(
+                modifier = Modifier
+                    .wrapContentSize()
+                    .padding(16.dp)
+            ) {
+                when {
+                    currentEntry == null -> {
+                        Button(
+                            onClick = { viewModel.CreateEntry(date) },  //on button click, create entry and pass date
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(4.dp)
+                        ) {
+                            Text("Add Entry")
+                        }
+                    }
+                    !currentEntry.complete -> {          //if current entry exists but isn't complete -> edit entry
                         Button(
                             onClick = { showDialogComplete = true },
                             modifier = Modifier
@@ -121,17 +147,7 @@ fun JournalScreen(navController: NavController) {
                             Text("Complete Entry")
                         }
                     }
-                }
-            ) {}
-        }
-        else {      //if current entry exists and is complete -> tell user to view from menu, showDialog = true
-            Scaffold(
-                bottomBar = {
-                    BottomAppBar(
-                        modifier = Modifier
-                            .wrapContentSize()
-                            .padding(16.dp)
-                    ) {
+                    else -> {
                         Button(
                             onClick = { showDialog = true },
                             modifier = Modifier
@@ -140,10 +156,57 @@ fun JournalScreen(navController: NavController) {
                         ) {
                             Text("Today's Entry Completed")
                         }
-
                     }
                 }
-            ) {}
+            }
+        }
+    ) { innerPadding ->
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+                .padding(innerPadding)
+        ) {
+
+            //journal row
+            //dynamically changes depending on journal_entries table
+            LazyRow(modifier = Modifier
+                .fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                items(allEntries) { item ->
+                    ElevatedButton(
+                        onClick = { selectedEntry = item },
+                        shape = CircleShape
+                    ) {
+                        Text(LocalDate.parse(item.date).format(formatter))
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            //checks if entry has been selected, opens entry text if clicked
+            Box( modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+                contentAlignment = Alignment.Center)
+            {
+                selectedEntry?.let { entry ->
+                    val scroll = rememberScrollState()
+                    Column () {
+                        OutlinedTextField(
+                            value = loadedText,
+                            onValueChange = {loadedText = it},
+                            enabled = !entry.complete,
+                            textStyle = TextStyle(
+                                fontSize = 18.sp,
+                                textAlign = TextAlign.Justify),
+                            modifier = Modifier.height(625.dp).width(375.dp).verticalScroll(scroll)
+                        )
+                    }
+                }
+            }
         }
     }
 
@@ -167,7 +230,13 @@ fun JournalScreen(navController: NavController) {
             title = { Text("Do you want to complete this entry?") },
             text = { Text("Complete entries cannot be edited anymore.")},
             confirmButton = {
-                Button(onClick = { showDialogComplete = false }) {
+                Button(onClick = {
+                    showDialogComplete = false
+                    viewModel.SaveEntry(loadedText)
+                    viewModel.CompleteEntry()
+                    navController.popBackStack()
+                    }
+                ) {
                     Text("Complete Entry")
                 }
             },
@@ -177,70 +246,6 @@ fun JournalScreen(navController: NavController) {
                 }
             }
         )
-    }
-
-    //gets text from current entry to display when entry is clicked
-    var loadedText by remember(selectedEntry) { mutableStateOf(selectedEntry?.content ?: "") }
-
-    //main column with back button
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        TopAppBar(
-            title = { Text("Journal") },
-            navigationIcon = {
-                IconButton(onClick = {
-                    selectedEntry?.complete?.let {
-                        if (!it) {
-                            viewModel.SaveEntry(loadedText)
-                        }
-                    }
-                    navController.popBackStack() }) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Back")      //add Alert to ask if entry is complete, if so, change bool in table
-                }                                                                                //also will add demo options, as in no date restriction
-            }
-        )
-
-        //journal row
-        //dynamically changes depending on journal_entries table
-        //formatter sets proper format and then date is parsed through to display proper format date
-        val formatter = DateTimeFormatter.ofPattern("M/d/yyyy")
-
-        LazyRow(modifier = Modifier.wrapContentSize(Alignment.TopCenter),
-            horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-            items(allEntries) { item ->
-                ElevatedButton(
-                    onClick = { selectedEntry = item },
-                    shape = CircleShape
-                ) {
-                    Text(LocalDate.parse(item.date).format(formatter))
-                }
-            }
-        }
-
-        //checks if entry has been selected, opens entry text if clicked
-        Box( modifier = Modifier.fillMaxSize(),
-             contentAlignment = Alignment.Center)
-        {
-            selectedEntry?.let { entry ->
-                val scroll = rememberScrollState()
-                Column () {
-                    OutlinedTextField(
-                        value = loadedText,
-                        onValueChange = {loadedText = it},
-                        enabled = !entry.complete,
-                        textStyle = TextStyle(
-                            fontSize = 18.sp,
-                            textAlign = TextAlign.Justify),
-                        modifier = Modifier.height(725.dp).width(375.dp).verticalScroll(scroll)
-                    )
-                }
-            }
-        }
-
-
     }
 }
 
