@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,6 +22,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
@@ -62,8 +64,8 @@ fun MoodScreen(navController: NavHostController) {
     )
     val moodEntries by viewModel.moodEntries.collectAsState()
     val moodMap = moodEntries.associateBy { it.date }
-    val currentMonth = YearMonth.now()
-    val days = makeCalendar(currentMonth)
+    var displayedMonth by remember { mutableStateOf(YearMonth.now()) }
+    val days = makeCalendar(displayedMonth)
    //  val petViewModel: PetViewModel = viewModel()
     var showDialog by remember{ mutableStateOf(false) }
     var selectedDate by remember { mutableStateOf<LocalDate?>(null) }
@@ -90,13 +92,27 @@ fun MoodScreen(navController: NavHostController) {
         ) {
             Text("Log Your Mood!") // Text for the button
         }
-        Text( // calendar header
-            text = "${currentMonth.month.name.lowercase().replaceFirstChar { it.uppercase() }} ${currentMonth.year}", // Month and Year above calendar
-            color = Color.Black,
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(top = 38.dp)
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 58.dp, start = 64.dp, end = 64.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            IconButton(onClick = {displayedMonth = displayedMonth.minusMonths(1)}) {
+                Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Previous Month")
+            }
+            Text( // calendar header
+                text = "${displayedMonth.month.name.lowercase().replaceFirstChar { it.uppercase() }} ${displayedMonth.year}", // Month and Year above calendar
+                color = Color.Black,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.align(Alignment.CenterVertically)
+            )
+            IconButton(onClick = { displayedMonth = displayedMonth.plusMonths(1)}) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Next Month"
+                )
+            }
+        }
         DaysHeader()
         LazyVerticalGrid(
             columns = GridCells.Fixed(7), // 7 for each day of week
@@ -116,6 +132,7 @@ fun MoodScreen(navController: NavHostController) {
                         mood = mood, // mood for that day
                         onClick = {
                             selectedDate = date
+                            // showDialog = true // makes it so you can click on calendar cell to log mood (any day)
                         }
                     )
                 }
