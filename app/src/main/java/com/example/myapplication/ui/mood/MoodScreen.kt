@@ -49,7 +49,7 @@ import androidx.compose.material3.Icon
 import com.example.myapplication.data.local.AppDB
 import androidx.compose.runtime.collectAsState
 // import com.example.myapplication.ui.pet.PetViewModel
-import kotlinx.coroutines.selects.select
+
 
 
 @OptIn(ExperimentalMaterial3Api::class)
