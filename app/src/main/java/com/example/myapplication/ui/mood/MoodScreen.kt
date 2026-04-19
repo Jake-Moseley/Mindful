@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,6 +22,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
@@ -44,99 +46,140 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.sp
 import androidx.compose.material3.Icon
+import com.example.myapplication.data.local.AppDB
+import androidx.compose.runtime.collectAsState
 // import com.example.myapplication.ui.pet.PetViewModel
-import kotlinx.coroutines.selects.select
+
 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun MoodScreen(navController: NavHostController, viewModel: MoodViewModel = viewModel()
-) {
-    val currentMonth = YearMonth.now()
-    val days = makeCalendar(currentMonth)
-   //  val petViewModel: PetViewModel = viewModel()
-    var showDialog by remember{ mutableStateOf(false) }
+fun MoodScreen(navController: NavHostController) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val db = AppDB.getDatabase(context)
+    val dao = db.moodDAO()
+    val viewModel: MoodViewModel = viewModel(
+        factory = MoodViewModelFactory(dao)
+    )
+    val moodEntries by viewModel.moodEntries.collectAsState()
+    val moodMap = moodEntries.associateBy { it.date }
+    var displayedMonth by remember { mutableStateOf(YearMonth.now()) }
+    val days = makeCalendar(displayedMonth)
+    //  val petViewModel: PetViewModel = viewModel()
+    var showDialog by remember { mutableStateOf(false) }
     var selectedDate by remember { mutableStateOf<LocalDate?>(null) }
 
     // First initial column that has houses the mood tracker title and log your mood button
-    Column(modifier = Modifier.fillMaxSize().background(Color.White).padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        TopAppBar(title = {Text("")}, navigationIcon = { IconButton(onClick = { navController.popBackStack() })  {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-        }})
-
-        Text(
-            text = "Mood Tracker",
-            color = Color.Black,
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(top = 40.dp) // modify to change location of title
-        )
-        ElevatedButton(
-            onClick = {
-                selectedDate = LocalDate.now()
-                showDialog = true // Pops up the mood logging functionality
-            },
-            modifier = Modifier.fillMaxWidth().padding(16.dp) //fills button from side to side
-        ) {
-            Text("Log Your Mood!") // Text for the button
+    Column(
+        modifier = Modifier.fillMaxSize().background(Color.White)
+    ) {
+        TopAppBar(title = { Text("") }, navigationIcon = {
+            IconButton(onClick = { navController.popBackStack() }) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            }
         }
-        Text( // calendar header
-            text = "${currentMonth.month.name.lowercase().replaceFirstChar { it.uppercase() }} ${currentMonth.year}", // Month and Year above calendar
-            color = Color.Black,
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(top = 38.dp)
         )
-        DaysHeader()
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(7), // 7 for each day of week
-            modifier = Modifier.fillMaxWidth(), // fills entire screen
-            contentPadding = PaddingValues(bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        Column(
+            modifier = Modifier.fillMaxSize().background(Color.White).padding(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            items(days) { date: LocalDate? -> if (date == null) {
-                    Box(
-                        modifier = Modifier.aspectRatio(1f) // gives us our square shape for calendar
+            Text(
+                text = "Mood Tracker",
+                color = Color.Black,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(top = 40.dp) // modify to change location of title
+            )
+            ElevatedButton(
+                onClick = {
+                    selectedDate = LocalDate.now()
+                    showDialog = true // Pops up the mood logging functionality
+                },
+                modifier = Modifier.fillMaxWidth().padding(16.dp) //fills button from side to side
+            ) {
+                Text("Log Your Mood!") // Text for the button
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 58.dp, start = 64.dp, end = 64.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                IconButton(onClick = { displayedMonth = displayedMonth.minusMonths(1) }) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Previous Month"
                     )
-                } else {
-                    val mood = viewModel.getMoodForDate(date) // grabbing mood from viewmodel
-                    CalendarDayCell(
-                        date = date, // day of week
-                        mood = mood, // mood for that day
-                        onClick = {
-                            selectedDate = date
-                        }
+                }
+                Text( // calendar header
+                    text = "${
+                        displayedMonth.month.name.lowercase().replaceFirstChar { it.uppercase() }
+                    } ${displayedMonth.year}", // Month and Year above calendar
+                    color = Color.Black,
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.align(Alignment.CenterVertically)
+                )
+                IconButton(onClick = { displayedMonth = displayedMonth.plusMonths(1) }) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = "Next Month"
                     )
                 }
             }
-        }
-        Spacer(modifier = Modifier.height(24.dp))
-        selectedDate?.let { date -> val mood = viewModel.getMoodForDate(date)
-            Text(
-                text = if (mood != null) {
-                    "Mood on ${date.monthValue}/${date.dayOfMonth}: ${mood.label}"
-                } else {
-                    "Mood not logged for that day"
-                }, color = Color.Black
-
-            )
-        }
-        if (showDialog){ // mood logging logic
-            MoodDialog(
-                selectedDate = selectedDate,
-                onDismiss = { showDialog = false },
-                onMoodSelected = {mood -> 
-                    viewModel.logMood(selectedDate, mood)
-                   // petViewModel.updateFromMood(mood)
-                    showDialog = false 
+            DaysHeader()
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(7), // 7 for each day of week
+                modifier = Modifier.fillMaxWidth(), // fills entire screen
+                contentPadding = PaddingValues(bottom = 32.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(days) { date: LocalDate? ->
+                    if (date == null) {
+                        Box(
+                            modifier = Modifier.aspectRatio(1f) // gives us our square shape for calendar
+                        )
+                    } else {
+                        val mood =
+                            moodMap[date.toString()]?.let { MoodType.fromInt(it.mood) } // grabbing mood from viewmodel
+                        CalendarDayCell(
+                            date = date, // day of week
+                            mood = mood, // mood for that day
+                            onClick = {
+                                selectedDate = date
+                                // showDialog = true // makes it so you can click on calendar cell to log mood (any day)
+                            }
+                        )
+                    }
                 }
-            )
+            }
+            Spacer(modifier = Modifier.height(24.dp))
+            selectedDate?.let { date ->
+                val mood = moodMap[date.toString()]?.let { MoodType.fromInt(it.mood) }
+                Text(
+                    text = if (mood != null) {
+                        "Mood on ${date.monthValue}/${date.dayOfMonth}: ${mood.label}"
+                    } else {
+                        "Mood not logged for that day"
+                    }, color = Color.Black
+
+                )
+            }
+            if (showDialog) { // mood logging logic
+                MoodDialog(
+                    selectedDate = selectedDate,
+                    onDismiss = { showDialog = false },
+                    onMoodSelected = { mood ->
+                        viewModel.logMood(selectedDate, mood)
+                        // petViewModel.updateFromMood(mood)
+                        showDialog = false
+                    }
+                )
+            }
         }
     }
 }
-
 @RequiresApi(Build.VERSION_CODES.O)
 fun makeCalendar(currentMonth: YearMonth): List<LocalDate?> { // build calendar logic
     val firstOfMonth = currentMonth.atDay(1) // first day of month
