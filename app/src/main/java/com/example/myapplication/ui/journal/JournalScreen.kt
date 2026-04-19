@@ -1,18 +1,18 @@
 package com.example.myapplication.ui.journal
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -23,6 +23,7 @@ import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -37,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -44,6 +46,7 @@ import androidx.navigation.NavController
 import com.example.myapplication.data.local.AppDB
 import com.example.myapplication.data.model.JournalEntry
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,19 +74,16 @@ fun JournalScreen(navController: NavController) {
 
     //create showDialog bool
     var showDialog by remember { mutableStateOf(false) }
+    //create showDialogComplete bool to use for complete confirmation
+    var showDialogComplete by remember { mutableStateOf(false) }
 
     //get date as LocalDate! to pass in CreateEntry()
-    //get date as string to compare
     val date = LocalDate.now()
-    val day = date.dayOfMonth
-    val month = date.monthValue
-    val year = date.year
-
-    val currentEntry = allEntries.find {it.date == "$month/$day/$year"}
+    val currentEntry = allEntries.find {it.date == date.toString()}
 
 
     //new journal bar checks
-    if (currentEntry?.date == null) //if no current entry exists -> create entry
+    if (currentEntry == null) //if no current entry exists -> create entry
     {
         Scaffold(
             bottomBar = {
@@ -104,7 +104,7 @@ fun JournalScreen(navController: NavController) {
             }
         ) {}
     } else {
-        if (!currentEntry.complete) {   //if current entry exists but isn't complete -> edit entry
+        if (!currentEntry.complete) {   //if current entry exists but isn't complete -> edit entry'
             Scaffold(
                 bottomBar = {
                     BottomAppBar(
@@ -113,12 +113,12 @@ fun JournalScreen(navController: NavController) {
                             .padding(16.dp)
                     ) {
                         Button(
-                            onClick = {},
+                            onClick = { showDialogComplete = true },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(4.dp)
                         ) {
-                            Text("Edit Current Entry")
+                            Text("Complete Entry")
                         }
                     }
                 }
@@ -138,7 +138,7 @@ fun JournalScreen(navController: NavController) {
                                 .fillMaxWidth()
                                 .padding(4.dp)
                         ) {
-                            Text("Entry Complete")
+                            Text("Today's Entry Completed")
                         }
 
                     }
@@ -161,6 +161,27 @@ fun JournalScreen(navController: NavController) {
         )
     }
 
+    if (showDialogComplete) {
+        AlertDialog(
+            onDismissRequest = { showDialogComplete = false },
+            title = { Text("Do you want to complete this entry?") },
+            text = { Text("Complete entries cannot be edited anymore.")},
+            confirmButton = {
+                Button(onClick = { showDialogComplete = false }) {
+                    Text("Complete Entry")
+                }
+            },
+            dismissButton = {
+                Button(onClick = { showDialogComplete = false}) {
+                    Text("Not yet")
+                }
+            }
+        )
+    }
+
+    //gets text from current entry to display when entry is clicked
+    var loadedText by remember(selectedEntry) { mutableStateOf(selectedEntry?.content ?: "") }
+
     //main column with back button
     Column(
         modifier = Modifier
@@ -170,7 +191,13 @@ fun JournalScreen(navController: NavController) {
         TopAppBar(
             title = { Text("Journal") },
             navigationIcon = {
-                IconButton(onClick = { navController.popBackStack() }) {
+                IconButton(onClick = {
+                    selectedEntry?.complete?.let {
+                        if (!it) {
+                            viewModel.SaveEntry(loadedText)
+                        }
+                    }
+                    navController.popBackStack() }) {
                     Icon(Icons.Default.ArrowBack, contentDescription = "Back")      //add Alert to ask if entry is complete, if so, change bool in table
                 }                                                                                //also will add demo options, as in no date restriction
             }
@@ -178,6 +205,9 @@ fun JournalScreen(navController: NavController) {
 
         //journal row
         //dynamically changes depending on journal_entries table
+        //formatter sets proper format and then date is parsed through to display proper format date
+        val formatter = DateTimeFormatter.ofPattern("M/d/yyyy")
+
         LazyRow(modifier = Modifier.wrapContentSize(Alignment.TopCenter),
             horizontalArrangement = Arrangement.spacedBy(7.dp)) {
             items(allEntries) { item ->
@@ -185,27 +215,32 @@ fun JournalScreen(navController: NavController) {
                     onClick = { selectedEntry = item },
                     shape = CircleShape
                 ) {
-                    Text(item.date)
+                    Text(LocalDate.parse(item.date).format(formatter))
                 }
             }
         }
 
-        //gets text from current entry to display when entry is clicked
-        var loadedText by remember(selectedEntry) { mutableStateOf(selectedEntry?.content ?: "") }
-
         //checks if entry has been selected, opens entry text if clicked
-        selectedEntry?.let { entry ->
-            val scroll = rememberScrollState()
-            Column () {
-                BasicTextField(
-                    value = loadedText,
-                    onValueChange = {loadedText = it},
-                    textStyle = TextStyle(fontSize = 18.sp),
-                    modifier = Modifier.height(650.dp).verticalScroll(scroll).offset(x = 11.dp, y = 20.dp)
-
-                )
+        Box( modifier = Modifier.fillMaxSize(),
+             contentAlignment = Alignment.Center)
+        {
+            selectedEntry?.let { entry ->
+                val scroll = rememberScrollState()
+                Column () {
+                    OutlinedTextField(
+                        value = loadedText,
+                        onValueChange = {loadedText = it},
+                        enabled = !entry.complete,
+                        textStyle = TextStyle(
+                            fontSize = 18.sp,
+                            textAlign = TextAlign.Justify),
+                        modifier = Modifier.height(725.dp).width(375.dp).verticalScroll(scroll)
+                    )
+                }
             }
         }
+
+
     }
 }
 
