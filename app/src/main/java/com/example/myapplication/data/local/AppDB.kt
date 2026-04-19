@@ -5,18 +5,22 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.example.myapplication.data.model.JournalEntry
 import com.example.myapplication.data.model.MoodEntry
+import com.example.myapplication.data.model.ResourceEntry
 
 @Database(
     entities = [
         MoodEntry::class,
-        JournalEntry::class
+        JournalEntry::class,
+        ResourceEntry::class
     ],
-    version = 2, // change when adding on different features i.e. journalEntry
+    version = 3, // change when adding on different features i.e. journalEntry
     exportSchema = false
 )
 abstract class AppDB : RoomDatabase() {
     abstract fun moodDAO(): MoodDAO
     abstract fun journalDAO(): JournalDAO
+
+    abstract fun resourceDAO(): ResourcesDAO
     companion object {
         @Volatile
         private var INSTANCE: AppDB? = null
