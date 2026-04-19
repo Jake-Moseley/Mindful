@@ -9,9 +9,9 @@ import com.example.myapplication.data.model.Goal
 class GoalsViewModel : ViewModel() {
     var goals by mutableStateOf(
         listOf(
-            Goal(1, "Say hi to alex", false),
-            Goal(2, "Drink water", false),
-            Goal(3, "Walk Around", false)
+            Goal(1, "Walk 3,000 Steps", false),
+            Goal(2, "Meditate For 15 Minutes", false),
+            Goal(3, "Make Your Bed", false)
         )
     )
         private set

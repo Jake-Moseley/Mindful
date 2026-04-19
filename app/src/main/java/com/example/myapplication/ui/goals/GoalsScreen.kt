@@ -62,7 +62,7 @@ fun GoalsScreen(navController: NavController, viewModel: GoalsViewModel = viewMo
             verticalArrangement = Arrangement.Top
         ) {
         Text(
-            text = "Goals",
+            text = "Daily Goals",
             color = Color.Black,
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
