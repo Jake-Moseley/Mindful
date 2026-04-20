@@ -1,5 +1,6 @@
 package com.example.myapplication.ui.journal
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,6 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
@@ -93,11 +95,8 @@ fun JournalScreen(navController: NavController) {
     //formatter sets proper format and then date is parsed through to display proper format date
     val formatter = DateTimeFormatter.ofPattern("M/d/yyyy")
 
-
-
-
     Scaffold(
-
+        containerColor = Color.White,
         topBar = {
             TopAppBar(
                 title = { Text("Journal") },
@@ -124,9 +123,11 @@ fun JournalScreen(navController: NavController) {
         },
         bottomBar = {
             BottomAppBar(
+                containerColor = Color.Transparent,
                 modifier = Modifier
                     .wrapContentSize()
-                    .padding(16.dp)
+                    //.padding(16.dp)
+                    .background(Color.White)
             ) {
                 when {
                     currentEntry == null -> {
@@ -167,10 +168,10 @@ fun JournalScreen(navController: NavController) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp)
                 .padding(innerPadding)
+                .padding(15.dp)
+                .background(Color.White)
         ) {
-
             //journal row
             //dynamically changes depending on journal_entries table
             LazyRow(modifier = Modifier
@@ -186,7 +187,7 @@ fun JournalScreen(navController: NavController) {
                 }
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(15.dp))
 
             //checks if entry has been selected, opens entry text if clicked
             Box( modifier = Modifier
@@ -200,11 +201,11 @@ fun JournalScreen(navController: NavController) {
                         OutlinedTextField(
                             value = loadedText,
                             onValueChange = {loadedText = it},
-                            enabled = !entry.complete,
+                            readOnly = entry.complete,
                             textStyle = TextStyle(
                                 fontSize = 18.sp,
-                                textAlign = TextAlign.Justify),
-                            modifier = Modifier.height(625.dp).width(375.dp).verticalScroll(scroll)
+                                textAlign = TextAlign.Left),
+                            modifier = Modifier.weight(1f).width(375.dp).verticalScroll(scroll),
                         )
                     }
                 }
