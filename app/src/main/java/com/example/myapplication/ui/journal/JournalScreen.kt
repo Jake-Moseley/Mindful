@@ -201,11 +201,11 @@ fun JournalScreen(navController: NavController) {
                         OutlinedTextField(
                             value = loadedText,
                             onValueChange = {loadedText = it},
-                            enabled = !entry.complete,
+                            readOnly = entry.complete,
                             textStyle = TextStyle(
                                 fontSize = 18.sp,
                                 textAlign = TextAlign.Left),
-                            modifier = Modifier.weight(1f).width(375.dp).verticalScroll(scroll)
+                            modifier = Modifier.weight(1f).width(375.dp).verticalScroll(scroll),
                         )
                     }
                 }
