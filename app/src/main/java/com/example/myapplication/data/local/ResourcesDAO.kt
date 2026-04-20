@@ -22,6 +22,9 @@ interface ResourcesDAO {
     @Query("DELETE FROM resources")   //deletes table
     suspend fun deleteAll()
 
+    @Query("SELECT COUNT(*) FROM resources")
+    suspend fun count(): Int
+
     /*
     @Query("UPDATE resources SET description = :text WHERE date = CURRENT_DATE")
     suspend fun updateResource(text: String)

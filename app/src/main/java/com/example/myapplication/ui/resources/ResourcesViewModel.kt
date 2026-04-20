@@ -18,12 +18,78 @@ class ResourcesViewModel(private val resourceDAO: ResourcesDAO) : ViewModel() {
         initialValue = emptyList()
     )
 
-    fun DemoResources() {
+    /*  fun DemoResources() {
         viewModelScope.launch {
-            ResourceEntry(name = "", description = "", phoneNum = "")
+            ResourceEntry(name = "Test", description = "This is a test", phoneNum = "999-999-9999")
         }
+    }*/
+
+    init {
+        CreateDemoResources()
     }
 
+    fun CreateDemoResources() {
+        viewModelScope.launch {
+            if (resourceDAO.count() == 0) {
+                resourceDAO.insertResource(
+                    ResourceEntry(
+                        name = "Clark Daniels",
+                        description = "Clark is a fictional Mental Health Professional. He focuses on helping people who struggle with low self-esteem and anxiety. He has been practicing as a licensed psychologist for 5 years now and is based in Lewisville.",
+                        phoneNum = "999-999-9999"
+                    )
+                )
+                resourceDAO.insertResource(
+                    ResourceEntry(
+                        name = "Jessica Smith",
+                        description = "Jessica is a fictional Mental Health Professional. She focuses on helping people who struggle with low self-esteem and anxiety. She has been practicing as a licensed psychologist for 5 years now and is based in Lewisville.",
+                        phoneNum = "999-999-9999"
+                    )
+                )
+                resourceDAO.insertResource(
+                    ResourceEntry(
+                        name = "Jane Tran",
+                        description = "Jane is a fictional Mental Health Professional. She focuses on helping people who struggle with low self-esteem and anxiety. She has been practicing as a licensed psychologist for 5 years now and is based in Lewisville.",
+                        phoneNum = "999-999-9999"
+                    )
+                )
+                resourceDAO.insertResource(
+                    ResourceEntry(
+                        name = "John Power",
+                        description = "John is a fictional Mental Health Professional. He focuses on helping people who struggle with low self-esteem and anxiety. He has been practicing as a licensed psychologist for 5 years now and is based in Lewisville.",
+                        phoneNum = "999-999-9999"
+                    )
+                )
+                resourceDAO.insertResource(
+                    ResourceEntry(
+                        name = "Steve Ryan",
+                        description = "Steve is a fictional Mental Health Professional. He focuses on helping people who struggle with low self-esteem and anxiety. He has been practicing as a licensed psychologist for 5 years now and is based in Lewisville.",
+                        phoneNum = "999-999-9999"
+                    )
+                )
+                resourceDAO.insertResource(
+                    ResourceEntry(
+                        name = "Marco Bernadino",
+                        description = "Marco is a fictional Mental Health Professional. He focuses on helping people who struggle with low self-esteem and anxiety. He has been practicing as a licensed psychologist for 5 years now and is based in Lewisville.",
+                        phoneNum = "999-999-9999"
+                    )
+                )
+                resourceDAO.insertResource(
+                    ResourceEntry(
+                        name = "Brandon Hughes",
+                        description = "Brandon is a fictional Mental Health Professional. He focuses on helping people who struggle with low self-esteem and anxiety. He has been practicing as a licensed psychologist for 5 years now and is based in Lewisville.",
+                        phoneNum = "999-999-9999"
+                    )
+                )
+                resourceDAO.insertResource(
+                    ResourceEntry(
+                        name = "Jason Lin",
+                        description = "Jason is a fictional Mental Health Professional. He focuses on helping people who struggle with low self-esteem and anxiety. He has been practicing as a licensed psychologist for 5 years now and is based in Lewisville.",
+                        phoneNum = "999-999-9999"
+                    )
+                )
+            }
+        }
+    }
 }
 
 class ResourceViewModelFactory(
