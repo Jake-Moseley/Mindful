@@ -22,6 +22,9 @@ Mindful is an **Android** application with the goal of improving the user's dail
 ### Virtual Pet
 - Take care and level up your pet by using different app features.
 
+### Resource List
+- View resources for mental health professionals and other related resources.
+
 ### Daily Quotes
 - View an inspirational daily quote to keep you going.
 
