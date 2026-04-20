@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Build
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -69,9 +68,8 @@ fun ResourcesScreen(navController: NavController) {
     val backgroundColor = Color(0xFFF7F2FA)     //From GoalsScreen
     val borderColor = Color.LightGray
 
-    println(allResourceEntries.size)
     Scaffold(
-
+        //top bar to hold back button
         topBar = {
             TopAppBar(
                 title = {},
@@ -84,11 +82,13 @@ fun ResourcesScreen(navController: NavController) {
             )
         }
     ) { innerPadding ->
+        //if db isnt empty output UI, db should never be empty
         if (allResourceEntries.isNotEmpty()) {
             LazyColumn(
                 modifier = Modifier.padding(innerPadding),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {  items(allResourceEntries) { ResourceEntry ->
+                //display of each Resource Entry
                 Card(
                     onClick = { },
                     colors = CardDefaults.cardColors(containerColor = backgroundColor),     //color, shape, and elevation modifications from goals page
@@ -101,8 +101,7 @@ fun ResourcesScreen(navController: NavController) {
                             .padding(8.dp)
                             .fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly) {
-
-                        Image(painterResource(R.drawable.book_clipart),
+                        Image(painterResource(R.drawable.person),
                             contentDescription = null,
                             modifier = Modifier.size(165.dp))
 
@@ -134,15 +133,16 @@ fun ResourcesScreen(navController: NavController) {
             }
             }
         }
-        else {
-            Text("Resources DB is Empty")
-        }
     }
 }
 
+//function to intake description text, shorten it, and add "*... Tap Card For More"
 @Composable
 fun ShortenText(descText: String, maxChars: Int) {
+    //checks if text needs to be shortened
     val isShortened = descText.length > maxChars
+
+    //if so, shorten it using build annotated string
     val displayText = if (isShortened) {
         buildAnnotatedString {
             append(descText.take(maxChars))
@@ -152,8 +152,11 @@ fun ShortenText(descText: String, maxChars: Int) {
             }
         }
     }
+    //if not, simply output unchanged description text
     else {
         AnnotatedString(descText)
     }
+
+    //display text
     Text(text = displayText, fontSize = 14.sp,  textAlign = TextAlign.Justify)
 }

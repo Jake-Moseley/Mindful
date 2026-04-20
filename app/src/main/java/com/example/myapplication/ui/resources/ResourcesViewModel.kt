@@ -12,22 +12,19 @@ import kotlinx.coroutines.launch
 
 class ResourcesViewModel(private val resourceDAO: ResourcesDAO) : ViewModel() {
 
+    //pulls entire table
     val ResourceList: StateFlow<List<ResourceEntry>> = resourceDAO.getAllResources().stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
     )
 
-    /*  fun DemoResources() {
-        viewModelScope.launch {
-            ResourceEntry(name = "Test", description = "This is a test", phoneNum = "999-999-9999")
-        }
-    }*/
-
+    //do this when application is started
     init {
         CreateDemoResources()
     }
 
+    //If no entries exist, create demo entries
     fun CreateDemoResources() {
         viewModelScope.launch {
             if (resourceDAO.count() == 0) {
@@ -92,6 +89,7 @@ class ResourcesViewModel(private val resourceDAO: ResourcesDAO) : ViewModel() {
     }
 }
 
+//function to build context for viewModel
 class ResourceViewModelFactory(
     private val resourceDAO: ResourcesDAO
 ) : ViewModelProvider.Factory {
