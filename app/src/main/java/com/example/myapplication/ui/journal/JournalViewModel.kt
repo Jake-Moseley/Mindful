@@ -38,16 +38,16 @@ class JournalViewModel(private val journalDAO: JournalDAO) : ViewModel() {
     }
 
     //updates content in journal entry
-    fun SaveEntry(savedContent: String) {
+    fun SaveEntry(savedContent: String, dateOfEntry: String) {
         viewModelScope.launch {
-            journalDAO.updateEntry(savedContent)
+            journalDAO.updateEntry(savedContent, dateOfEntry)
         }
     }
 
     //changes complete bool to true
-    fun CompleteEntry() {
+    fun CompleteEntry(dateOfEntry: String) {
         viewModelScope.launch {
-            journalDAO.completeEntry()
+            journalDAO.completeEntry(dateOfEntry)
         }
     }
 }

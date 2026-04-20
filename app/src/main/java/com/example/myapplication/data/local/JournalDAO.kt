@@ -15,11 +15,11 @@ interface JournalDAO {
     @Query("SELECT * From journal_entries WHERE date = :date")  //finds entry that matches passed date
     suspend fun getJournalByDate(date: String): JournalEntry?
 
-    @Query("UPDATE journal_entries SET content = :content WHERE date = CURRENT_DATE")
-    suspend fun updateEntry(content: String)
+    @Query("UPDATE journal_entries SET content = :content WHERE date = :date")  //updates entry with content, uses date to find correct entry
+    suspend fun updateEntry(content: String, date: String)
 
-    @Query("UPDATE journal_entries SET complete = 1 WHERE date = CURRENT_DATE")
-    suspend fun completeEntry()
+    @Query("UPDATE journal_entries SET complete = 1 WHERE date = :date")    //sets complete bool to true, uses date to find correct entry
+    suspend fun completeEntry(date: String)
 
     @Query("SELECT * FROM journal_entries") //pulls entire table
     fun getAllEntries(): Flow<List<JournalEntry>>
