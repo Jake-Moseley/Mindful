@@ -105,7 +105,9 @@ fun JournalScreen(navController: NavController) {
                     IconButton(onClick = {
                         selectedEntry?.complete?.let {
                             if (!it) {
-                                viewModel.SaveEntry(loadedText)
+                                selectedEntry?.let {entry ->
+                                    viewModel.SaveEntry(loadedText, entry.date)
+                                }
                             }
                         }
                         navController.popBackStack() }) {
@@ -232,9 +234,11 @@ fun JournalScreen(navController: NavController) {
             confirmButton = {
                 Button(onClick = {
                     showDialogComplete = false
-                    viewModel.SaveEntry(loadedText)
-                    viewModel.CompleteEntry()
-                    navController.popBackStack()
+                    selectedEntry?.let {entry ->
+                        viewModel.SaveEntry(loadedText, entry.date)
+                        viewModel.CompleteEntry(entry.date)
+                        navController.popBackStack()
+                        }
                     }
                 ) {
                     Text("Complete Entry")
