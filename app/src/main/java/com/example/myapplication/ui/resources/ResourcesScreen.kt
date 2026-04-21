@@ -181,7 +181,9 @@ fun UnfilteredList(allResourceEntries: List<ResourceEntry>, innerPadding: Paddin
                     Text(
                         resourceEntry.name,
                         modifier = Modifier
-                            .fillMaxWidth(),)
+                            .fillMaxWidth(),
+                        fontWeight = FontWeight.Bold
+                    )
 
                     Spacer(modifier = Modifier.size(3.dp))
 
@@ -251,7 +253,9 @@ fun FilteredList(innerPadding: PaddingValues, viewModel: ResourcesViewModel) {
                     Text(
                         resourceEntry.name,
                         modifier = Modifier
-                            .fillMaxWidth(),)
+                            .fillMaxWidth(),
+                        fontWeight = FontWeight.Bold
+                    )
 
                     Spacer(modifier = Modifier.size(3.dp))
 
@@ -280,29 +284,44 @@ fun FilteredList(innerPadding: PaddingValues, viewModel: ResourcesViewModel) {
 //Dialog pop-up to display more detailed information
 @Composable
 fun InfoDialogBox(resourceEntry: ResourceEntry, showDialog: Boolean, onDismiss: () -> Unit) {
+    val backgroundColor = Color(0xFFF7F2FA)     //From GoalsScreen
+    val borderColor = Color.LightGray
     if (showDialog) {
-        Dialog( onDismissRequest = { onDismiss() }) {
-            Column() {
-                Text(
-                    resourceEntry.name,
-                    modifier = Modifier
-                        .fillMaxWidth(),)
+        Dialog(onDismissRequest = { onDismiss() }) {
+            //pop-up card with formatting
+            Card(
+                colors = CardDefaults.cardColors(containerColor = backgroundColor),     //color, shape, and elevation modifications from goals page
+                border = BorderStroke(2.dp, borderColor),
+                shape = RoundedCornerShape(12.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            ) {
+                Column(modifier = Modifier.padding(10.dp)) {
+                    Text(
+                        resourceEntry.name,
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                        fontWeight = FontWeight.Bold
 
-                Spacer(modifier = Modifier.size(3.dp))
+                    )
 
-                Text(
-                    resourceEntry.phoneNum,
-                    modifier = Modifier
-                        .fillMaxWidth(),
-                    fontSize = 12.sp)
+                    Spacer(modifier = Modifier.size(3.dp))
 
-                Spacer(modifier = Modifier.padding(4.dp))
+                    Text(
+                        resourceEntry.phoneNum,
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                        fontSize = 12.sp
+                    )
 
-                Text(
-                    resourceEntry.description,
-                    modifier = Modifier
-                        .fillMaxWidth(),
-                    fontSize = 14.sp)
+                    Spacer(modifier = Modifier.padding(4.dp))
+
+                    Text(
+                        resourceEntry.description,
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                        fontSize = 14.sp
+                    )
+                }
             }
         }
     }

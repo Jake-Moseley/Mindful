@@ -1,5 +1,6 @@
 package com.example.myapplication.ui.resources
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -44,6 +45,7 @@ class ResourcesViewModel(private val resourceDAO: ResourcesDAO) : ViewModel() {
     //do this when application is started
     init {
         CreateDemoResources()
+        Log.d("Resources DB Load", "Loaded Demo Entries into DB")
     }
 
     //If no entries exist, create demo entries
