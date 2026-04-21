@@ -2,6 +2,7 @@ package com.example.myapplication.ui.resources
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -75,6 +76,7 @@ fun ResourcesScreen(navController: NavController) {
     val query by viewModel.query.collectAsState()
 
     Scaffold(
+        containerColor = Color.White,
         //top bar to hold back button
         topBar = {
             TopAppBar(
@@ -93,7 +95,6 @@ fun ResourcesScreen(navController: NavController) {
                             textStyle = TextStyle(fontSize = 14.sp),
                             shape = CircleShape, singleLine = true,
                             modifier = Modifier
-                                //.height(48.dp)
                                 .fillMaxWidth(0.8f) ) }
                 },
                 modifier = Modifier.padding(top = 5.dp)
@@ -101,7 +102,7 @@ fun ResourcesScreen(navController: NavController) {
         }
     ) { innerPadding ->
         //if db isn't empty output UI, db should never be empty
-        Column(modifier = Modifier.padding(15.dp)) {
+        Column(modifier = Modifier.padding(15.dp).background(Color.White)) {
             //checks if Resource table is empty
             if (allResourceEntries.isNotEmpty()) {
                 //checks if search has been changed
