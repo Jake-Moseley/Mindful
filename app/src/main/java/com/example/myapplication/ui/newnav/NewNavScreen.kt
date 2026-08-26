@@ -1,24 +1,19 @@
 package com.example.myapplication.ui.newnav
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.ChatBubble
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.example.myapplication.R
 import org.json.JSONArray
 import java.util.Calendar
 
@@ -35,12 +30,6 @@ fun NewNavScreen(navController: NavController) {
     Scaffold(
         bottomBar = {
             NavigationBar {
-                NavigationBarItem(
-                    selected = true,
-                    onClick = { },
-                    icon = { Icon(Icons.Filled.Favorite, contentDescription = null) },
-                    label = { Text("Pet") }
-                )
                 NavigationBarItem(
                     selected = false,
                     onClick = { navController.navigate("journal") },
@@ -85,36 +74,6 @@ fun NewNavScreen(navController: NavController) {
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(12.dp).fillMaxWidth()
                 )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Text(
-                text = "Your Pet: Fox",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Image(
-                painter = painterResource(id = R.drawable.virtual_pet),
-                contentDescription = null,
-                modifier = Modifier.size(200.dp)
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text("Level: 1")
-            Text("XP: 0")
-            Text("Happiness: 100")
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { }) { Text("Feed") }
-                Button(onClick = { }) { Text("Play") }
-                Button(onClick = { }) { Text("Rest") }
             }
         }
     }

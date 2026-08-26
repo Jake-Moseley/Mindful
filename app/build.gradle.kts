@@ -1,7 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.compiler)
-    id("com.google.gms.google-services")
     id("com.google.devtools.ksp") version "2.3.6"
 }
 
@@ -54,11 +53,6 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     implementation(libs.androidx.compose.foundation.layout)
     annotationProcessor(libs.androidx.room.compiler)
-    implementation(platform("com.google.firebase:firebase-bom:34.11.0"))
-    implementation("com.google.firebase:firebase-auth")
-    implementation("androidx.credentials:credentials:1.5.0")
-    implementation("androidx.credentials:credentials-play-services-auth:1.5.0")
-    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
     implementation("androidx.room:room-runtime:2.7.0")
     implementation("androidx.room:room-ktx:2.7.0")
     implementation("androidx.compose.ui:ui:1.10.6")
