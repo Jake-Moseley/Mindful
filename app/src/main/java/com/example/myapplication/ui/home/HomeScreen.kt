@@ -5,12 +5,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
 import androidx.compose.material3.Button
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import com.example.myapplication.ui.auth.AuthViewModel
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -18,7 +14,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 
 @Composable
-fun HomeScreen(navController: NavController, authViewModel: AuthViewModel) {
+fun HomeScreen(navController: NavController) {
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -36,9 +32,6 @@ fun HomeScreen(navController: NavController, authViewModel: AuthViewModel) {
         Button(onClick = { navController.navigate("forum") }, modifier = Modifier.fillMaxWidth().padding(4.dp)) {
             Text("Forum")
         }
-        Button(onClick = { navController.navigate("pet") }, modifier = Modifier.fillMaxWidth().padding(4.dp)) {
-            Text("Virtual Pet")
-        }
         Button(onClick = { navController.navigate("resources") }, modifier = Modifier.fillMaxWidth().padding(4.dp)) {
             Text("Resources")
         }
@@ -47,18 +40,6 @@ fun HomeScreen(navController: NavController, authViewModel: AuthViewModel) {
         }
         Button(onClick = { navController.navigate("newnav") }, modifier = Modifier.fillMaxWidth().padding(4.dp)) {
             Text("New Nav")
-        }
-        Spacer(modifier = Modifier.height(24.dp))
-        OutlinedButton(
-            onClick = {
-                authViewModel.logout()
-                navController.navigate("auth") {
-                    popUpTo(0) { inclusive = true }
-                }
-            },
-            modifier = Modifier.fillMaxWidth().padding(4.dp)
-        ) {
-            Text("Log Out")
         }
     }
 }

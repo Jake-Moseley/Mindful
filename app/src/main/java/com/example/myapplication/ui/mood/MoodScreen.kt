@@ -48,9 +48,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.material3.Icon
 import com.example.myapplication.data.local.AppDB
 import androidx.compose.runtime.collectAsState
-// import com.example.myapplication.ui.pet.PetViewModel
-
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @RequiresApi(Build.VERSION_CODES.O)
@@ -66,7 +63,6 @@ fun MoodScreen(navController: NavHostController) {
     val moodMap = moodEntries.associateBy { it.date }
     var displayedMonth by remember { mutableStateOf(YearMonth.now()) }
     val days = makeCalendar(displayedMonth)
-    //  val petViewModel: PetViewModel = viewModel()
     var showDialog by remember { mutableStateOf(false) }
     var selectedDate by remember { mutableStateOf<LocalDate?>(null) }
 
@@ -172,7 +168,6 @@ fun MoodScreen(navController: NavHostController) {
                     onDismiss = { showDialog = false },
                     onMoodSelected = { mood ->
                         viewModel.logMood(selectedDate, mood)
-                        // petViewModel.updateFromMood(mood)
                         showDialog = false
                     }
                 )
