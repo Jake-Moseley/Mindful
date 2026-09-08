@@ -6,7 +6,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.myapplication.ui.home.HomeScreen
 import com.example.myapplication.ui.journal.JournalScreen
-import com.example.myapplication.ui.forum.ForumScreen
 import com.example.myapplication.ui.mood.MoodScreen
 import com.example.myapplication.ui.goals.GoalsScreen
 import com.example.myapplication.ui.resources.ResourcesScreen
@@ -22,7 +21,6 @@ fun MindfulApp() {
         composable("home") { HomeScreen(navController) }
         composable("journal") { JournalScreen(navController) }
         composable("text") { TextScreen(navController) }
-        composable("forum") { ForumScreen(navController) }
         composable("mood") { MoodScreen(navController) }
         composable("goals") { GoalsScreen(navController) }
         composable("resources") { ResourcesScreen(navController) }
