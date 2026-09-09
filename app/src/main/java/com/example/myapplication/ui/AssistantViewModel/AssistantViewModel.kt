@@ -1,4 +1,4 @@
-package com.example.myapplication.ui.AssistantViewModel;
+package com.example.myapplication.ui.AssistantViewModel
 
-public class AssistantViewModel {
+class AssistantViewModel {
 }
