@@ -71,7 +71,7 @@ fun MoodScreen(navController: NavHostController) {
         modifier = Modifier.fillMaxSize().background(Color.White)
     ) {
         TopAppBar(title = { Text("") }, navigationIcon = {
-            IconButton(onClick = { navController.popBackStack() }) {
+            IconButton(onClick = { if(navController.previousBackStackEntry != null) navController.popBackStack() }) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
             }
         }

@@ -82,7 +82,7 @@ fun ResourcesScreen(navController: NavController) {
             TopAppBar(
                 navigationIcon = {
                     IconButton(onClick = {
-                        navController.popBackStack() }) {
+                        if(navController.previousBackStackEntry != null) navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },

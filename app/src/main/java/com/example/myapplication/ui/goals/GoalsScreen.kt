@@ -47,7 +47,7 @@ fun GoalsScreen(navController: NavController, viewModel: GoalsViewModel = viewMo
         topBar = {
             TopAppBar(
                 title = {},
-                navigationIcon = {IconButton(onClick = {navController.popBackStack()}) {
+                navigationIcon = {IconButton(onClick = {if(navController.previousBackStackEntry != null) navController.popBackStack()}) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back"
