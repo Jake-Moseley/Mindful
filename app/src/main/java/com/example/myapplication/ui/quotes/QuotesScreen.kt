@@ -30,7 +30,7 @@ fun QuoteScreen(navController: NavController)
          Spacer(modifier = Modifier.height(24.dp))
          Text(text = "\"$quote\"", style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
          Spacer(modifier = Modifier.height(24.dp))
-         OutlinedButton(onClick = { navController.popBackStack()
+         OutlinedButton(onClick = { if(navController.previousBackStackEntry != null) navController.popBackStack()
          }) {
              Text("Back")
          }

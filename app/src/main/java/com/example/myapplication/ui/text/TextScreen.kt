@@ -26,7 +26,7 @@ fun TextScreen(navController: NavController, viewModel: JournalViewModel = viewM
         TopAppBar(
             title = { Text("Journal") },
             navigationIcon = {
-                IconButton(onClick = { navController.popBackStack() }) {
+                IconButton(onClick = { if(navController.previousBackStackEntry != null) navController.popBackStack() }) {
                     Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                 }
             }

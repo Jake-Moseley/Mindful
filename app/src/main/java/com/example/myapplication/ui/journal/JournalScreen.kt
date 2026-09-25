@@ -109,7 +109,7 @@ fun JournalScreen(navController: NavController) {
                                 }
                             }
                         }
-                        navController.popBackStack() }) {
+                        if(navController.previousBackStackEntry != null) navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
@@ -238,7 +238,7 @@ fun JournalScreen(navController: NavController) {
                     selectedEntry?.let {entry ->
                         viewModel.SaveEntry(loadedText, entry.date)
                         viewModel.CompleteEntry(entry.date)
-                        navController.popBackStack()
+                        if(navController.previousBackStackEntry != null) navController.popBackStack()
                         }
                     }
                 ) {
