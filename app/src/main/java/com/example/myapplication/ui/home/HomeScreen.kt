@@ -155,7 +155,12 @@ fun HomeScreen(navController: NavController, goalsViewModel: GoalsViewModel = vi
             item {
                 ResourceWidgetCard(
                     onClick = { navController.navigate("resources") }
-                ) //
+                )
+            }
+            item {
+                JournalWidgetCard(
+                    onClick = {navController.navigate("journal")}
+                )
             }
         }
     }

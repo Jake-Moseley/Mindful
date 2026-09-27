@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Campaign
+import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -151,5 +152,17 @@ fun ResourceWidgetCard(onClick: () -> Unit) {
         onClick = onClick
     ) {
         Text("Reach Out", fontWeight = FontWeight.Bold, color = Color.DarkGray, fontSize = 24.sp)
+    }
+}
+
+@Composable
+fun JournalWidgetCard(onClick: () -> Unit) {
+    DashboardCard(
+        backgroundColor = PastelCyan,
+        icon = Icons.Default.EditNote,
+        title = "Journal",
+        onClick = onClick
+    ) {
+        Text("Entry", fontWeight = FontWeight.Bold, color = Color.DarkGray, fontSize = 24.sp)
     }
 }
