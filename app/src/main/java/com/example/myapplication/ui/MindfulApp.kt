@@ -21,7 +21,7 @@ fun MindfulApp() {
     val navController = rememberNavController()
     val goalsViewModel: GoalsViewModel = viewModel()
 
-    NavHost(navController = navController, startDestination = "newnav") {
+    NavHost(navController = navController, startDestination = "home") {
         composable("home") { HomeScreen(navController, goalsViewModel) }
         composable("journal") { JournalScreen(navController) }
         composable("text") { TextScreen(navController) }

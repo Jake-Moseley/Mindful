@@ -30,6 +30,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -55,8 +56,7 @@ import androidx.navigation.NavController
 import com.example.myapplication.R
 import com.example.myapplication.data.local.AppDB
 import com.example.myapplication.data.model.ResourceEntry
-
-
+val PastelCream = Color(0xFFFBE6CD)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ResourcesScreen(navController: NavController) {
@@ -88,7 +88,7 @@ fun ResourcesScreen(navController: NavController) {
                 },
                 title = {
                     //search bar
-                    Box(modifier = Modifier.fillMaxWidth().offset(x = -23.dp), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.fillMaxWidth().offset(x = -23.dp), contentAlignment = Alignment.TopCenter) {
                         OutlinedTextField( value = query,
                             onValueChange = { viewModel.updateSearchQuery(it)},
                             placeholder = { Text("Search... ") },
@@ -97,7 +97,13 @@ fun ResourcesScreen(navController: NavController) {
                             modifier = Modifier
                                 .fillMaxWidth(0.8f) ) }
                 },
-                modifier = Modifier.padding(top = 5.dp)
+                modifier = Modifier.padding(top = 5.dp),
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = PastelCream
+                )
+
+
+
             )
         }
     ) { innerPadding ->
@@ -147,7 +153,7 @@ fun ShortenText(descText: String, maxChars: Int) {
 @Composable
 fun UnfilteredList(allResourceEntries: List<ResourceEntry>, innerPadding: PaddingValues) {
 
-    val backgroundColor = Color(0xFFF7F2FA)     //From GoalsScreen
+    val backgroundColor = PastelCream//Color(0xFFF7F2FA)     //From GoalsScreen
     val borderColor = Color.LightGray
     var showDialog by remember { mutableStateOf(false) }
     var selectedEntry by remember { mutableStateOf<ResourceEntry?>(null)}
@@ -159,7 +165,7 @@ fun UnfilteredList(allResourceEntries: List<ResourceEntry>, innerPadding: Paddin
         //display of each Resource Entry Card
         Card(
             onClick = { showDialog = true
-                        selectedEntry = resourceEntry},
+                selectedEntry = resourceEntry},
             colors = CardDefaults.cardColors(containerColor = backgroundColor),     //color, shape, and elevation modifications from goals page
             border = BorderStroke(1.dp, borderColor),
             shape = RoundedCornerShape(12.dp),
@@ -231,7 +237,7 @@ fun FilteredList(innerPadding: PaddingValues, viewModel: ResourcesViewModel) {
         //display of each Resource Entry Card
         Card(
             onClick = { showDialog = true
-                        selectedEntry = resourceEntry},
+                selectedEntry = resourceEntry},
             colors = CardDefaults.cardColors(containerColor = backgroundColor),     //color, shape, and elevation modifications from goals page
             border = BorderStroke(1.dp, borderColor),
             shape = RoundedCornerShape(12.dp),
@@ -284,7 +290,7 @@ fun FilteredList(innerPadding: PaddingValues, viewModel: ResourcesViewModel) {
 //Dialog pop-up to display more detailed information
 @Composable
 fun InfoDialogBox(resourceEntry: ResourceEntry, showDialog: Boolean, onDismiss: () -> Unit) {
-    val backgroundColor = Color(0xFFF7F2FA)     //From GoalsScreen
+    val backgroundColor = PastelCream    //From GoalsScreen
     val borderColor = Color.LightGray
     if (showDialog) {
         Dialog(onDismissRequest = { onDismiss() }) {
