@@ -40,7 +40,7 @@ import com.example.myapplication.ui.goals.GoalsViewModel
 @Composable
 fun HomeScreen(navController: NavController, goalsViewModel: GoalsViewModel = viewModel()) {
     val context = LocalContext.current
-    
+
     // Setup ViewModel for Mood
     val db = AppDB.getDatabase(context)
     val dao = db.moodDAO()
@@ -48,7 +48,7 @@ fun HomeScreen(navController: NavController, goalsViewModel: GoalsViewModel = vi
         factory = MoodViewModelFactory(dao)
     )
     val moodEntries by viewModel.moodEntries.collectAsState()
-    
+
     // Find today's mood
     val todayStr = LocalDate.now().toString()
     val todayMoodEntry = moodEntries.find { it.date == todayStr }
@@ -65,7 +65,7 @@ fun HomeScreen(navController: NavController, goalsViewModel: GoalsViewModel = vi
             "Small steps every day lead to big changes."
         }
     }
-    
+
     // Dynamic Greeting
     val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
     val greeting = when {
@@ -81,7 +81,7 @@ fun HomeScreen(navController: NavController, goalsViewModel: GoalsViewModel = vi
             .padding(horizontal = 24.dp)
     ) {
         Spacer(modifier = Modifier.height(48.dp))
-        
+
         // Header Area
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -103,7 +103,7 @@ fun HomeScreen(navController: NavController, goalsViewModel: GoalsViewModel = vi
                     fontSize = 14.sp
                 )
             }
-            
+
             Box(
                 modifier = Modifier
                     .size(48.dp)
@@ -114,9 +114,9 @@ fun HomeScreen(navController: NavController, goalsViewModel: GoalsViewModel = vi
                 Icon(Icons.Default.Person, contentDescription = "Profile", tint = Color.DarkGray)
             }
         }
-        
+
         Spacer(modifier = Modifier.height(32.dp))
-        
+
         // Widgets Grid
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
@@ -126,7 +126,7 @@ fun HomeScreen(navController: NavController, goalsViewModel: GoalsViewModel = vi
         ) {
             item {
                 MoodWidgetCard(
-                    mood = todayMood, 
+                    mood = todayMood,
                     onClick = { navController.navigate("mood") }
                 )
             }
@@ -151,6 +151,11 @@ fun HomeScreen(navController: NavController, goalsViewModel: GoalsViewModel = vi
             }
             item {
                 AiCoachWidgetCard() // place holder static for now until AI screen is built
+            }
+            item {
+                ResourceWidgetCard(
+                    onClick = { navController.navigate("resources") }
+                ) //
             }
         }
     }

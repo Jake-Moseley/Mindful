@@ -8,9 +8,9 @@ import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.LocalFireDepartment
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -110,7 +110,7 @@ fun StreakWidgetCard() { //refer to home screen comments for knowledge on what w
 fun SleepWidgetCard() {
     DashboardCard(
         backgroundColor = PastelBlue,
-        icon = Icons.Default.Bedtime, 
+        icon = Icons.Default.Bedtime,
         title = "Sleep"
     ) {
         Text("7.5h", fontWeight = FontWeight.Bold, color = Color.DarkGray, fontSize = 24.sp)
@@ -122,7 +122,7 @@ fun SleepWidgetCard() {
 fun HydrationWidgetCard() {
     DashboardCard(
         backgroundColor = PastelCyan,
-        icon = Icons.Default.WaterDrop, 
+        icon = Icons.Default.WaterDrop,
         title = "Hydration"
     ) {
         Text("6 / 8", fontWeight = FontWeight.Bold, color = Color.DarkGray, fontSize = 24.sp)
@@ -134,10 +134,22 @@ fun HydrationWidgetCard() {
 fun AiCoachWidgetCard() {
     DashboardCard(
         backgroundColor = PastelCream,
-        icon = Icons.Default.AutoAwesome, 
+        icon = Icons.Default.AutoAwesome,
         title = "AI Coach"
     ) {
         Text("Ask me", fontWeight = FontWeight.Bold, color = Color.DarkGray, fontSize = 24.sp)
         Text("anything...", color = Color.DarkGray, fontSize = 14.sp)
+    }
+}
+
+@Composable
+fun ResourceWidgetCard(onClick: () -> Unit) {
+    DashboardCard(
+        backgroundColor = PastelOrange,
+        icon = Icons.Default.Campaign,
+        title = "Professional Help",
+        onClick = onClick
+    ) {
+        Text("Reach Out", fontWeight = FontWeight.Bold, color = Color.DarkGray, fontSize = 24.sp)
     }
 }
