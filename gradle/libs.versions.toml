@@ -1,5 +1,5 @@
 [versions]
-agp = "9.0.0"
+agp = "9.1.1"
 kotlin = "2.2.10"
 coreKtx = "1.18.0"
 junit = "4.13.2"
@@ -11,6 +11,10 @@ composeBom = "2025.03.00"
 activityCompose = "1.10.1"
 navigationCompose = "2.9.0"
 foundationLayout = "1.10.6"
+firebaseBom = "34.19.0"
+googleServices = "4.5.0"
+orgJson = "20240303"
+firebaseAppcheckDebug = "19.4.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -29,9 +33,13 @@ androidx-room-runtime = { group = "androidx.room", name = "room-runtime", versio
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 androidx-compose-foundation-layout = { group = "androidx.compose.foundation", name = "foundation-layout", version.ref = "foundationLayout" }
+firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
+firebase-ai = { group = "com.google.firebase", name = "firebase-ai" }
+org-json = { group = "org.json", name = "json", version.ref = "orgJson" }
+firebase-appcheck-debug = { group = "com.google.firebase", name = "firebase-appcheck-debug", version.ref = "firebaseAppcheckDebug" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
-
+google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
