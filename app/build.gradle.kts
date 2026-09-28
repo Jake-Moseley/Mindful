@@ -3,7 +3,9 @@ plugins {
     alias(libs.plugins.compose.compiler)
     id("com.google.devtools.ksp") version "2.3.6"
 }
-
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}
 android {
     namespace = "com.example.myapplication"
     compileSdk {
@@ -52,6 +54,7 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     implementation(libs.androidx.compose.foundation.layout)
+    implementation(libs.firebase.appcheck.debug)
     annotationProcessor(libs.androidx.room.compiler)
     implementation("androidx.room:room-runtime:2.7.0")
     implementation("androidx.room:room-ktx:2.7.0")
@@ -59,8 +62,12 @@ dependencies {
     implementation("androidx.compose.material3:material3:1.4.0")
     implementation("androidx.compose.material:material-icons-extended")
     ksp("androidx.room:room-compiler:2.7.0")
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.ai)
+    implementation("com.google.firebase:firebase-appcheck-debug")
     debugImplementation(libs.androidx.compose.ui.tooling)
     testImplementation(libs.junit)
+    testImplementation(libs.org.json)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 }
