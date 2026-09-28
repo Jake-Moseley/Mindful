@@ -19,6 +19,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.filled.PhoneInTalk
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.style.TextOverflow
+import com.example.myapplication.data.ai.ConcernLevel
 
 import com.example.myapplication.ui.mood.MoodType
 
@@ -131,14 +135,42 @@ fun HydrationWidgetCard() {
 }
 
 @Composable
-fun AiCoachWidgetCard() {
-    DashboardCard(
-        backgroundColor = PastelCream,
-        icon = Icons.Default.AutoAwesome,
-        title = "AI Coach"
+fun InsightWidgetCard(
+    level: ConcernLevel,
+    title: String,
+    message: String,
+    backgroundColor: Color,
+    accentColor: Color,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClickLabel = "Open pattern insights") { onClick() },
+        colors = CardDefaults.cardColors(containerColor = backgroundColor),
+        shape = RoundedCornerShape(24.dp)
     ) {
-        Text("Ask me", fontWeight = FontWeight.Bold, color = Color.DarkGray, fontSize = 24.sp)
-        Text("anything...", color = Color.DarkGray, fontSize = 14.sp)
+        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.Top) {
+            Icon(
+                imageVector = if (level == ConcernLevel.CRISIS) Icons.Default.PhoneInTalk else Icons.Default.AutoAwesome,
+                contentDescription = null,
+                tint = accentColor
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Pattern Insights", color = Color.Gray, fontSize = 13.sp)
+                Text(title, fontWeight = FontWeight.Bold, color = accentColor, fontSize = 18.sp)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(message, color = Color.DarkGray, fontSize = 14.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = if (level == ConcernLevel.CRISIS) "Tap for support options →" else "Tap to see your patterns →",
+                    color = accentColor,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
     }
 }
 

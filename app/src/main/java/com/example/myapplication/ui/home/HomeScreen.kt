@@ -33,12 +33,20 @@ import com.example.myapplication.ui.mood.MoodViewModelFactory
 import org.json.JSONArray
 import java.time.LocalDate
 import java.util.Calendar
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import com.example.myapplication.ui.insights.InsightsViewModel
+import com.example.myapplication.ui.insights.levelColors
+import com.example.myapplication.ui.insights.levelTitle
 
 import com.example.myapplication.ui.goals.GoalsViewModel
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun HomeScreen(navController: NavController, goalsViewModel: GoalsViewModel = viewModel()) {
+fun HomeScreen(
+    navController: NavController,
+    goalsViewModel: GoalsViewModel = viewModel(),
+    insightsViewModel: InsightsViewModel = viewModel()
+) {
     val context = LocalContext.current
 
     // Setup ViewModel for Mood
@@ -53,6 +61,11 @@ fun HomeScreen(navController: NavController, goalsViewModel: GoalsViewModel = vi
     val todayStr = LocalDate.now().toString()
     val todayMoodEntry = moodEntries.find { it.date == todayStr }
     val todayMood = todayMoodEntry?.let { MoodType.fromInt(it.mood) }
+
+    // AI Behavior Pattern Analysis
+    val insightReport by insightsViewModel.report.collectAsState()
+    val insightLevel by insightsViewModel.displayLevel.collectAsState()
+    val aiInsight by insightsViewModel.aiState.collectAsState()
 
     // Dynamic Quote
     val quote = remember {
@@ -124,6 +137,18 @@ fun HomeScreen(navController: NavController, goalsViewModel: GoalsViewModel = vi
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(bottom = 24.dp)
         ) {
+            // Full-width so warning signs are easy to notice on the home page
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                val (background, accent) = levelColors(insightLevel)
+                InsightWidgetCard(
+                    level = insightLevel,
+                    title = levelTitle(insightLevel),
+                    message = aiInsight.insight?.summary ?: insightReport.headline,
+                    backgroundColor = background,
+                    accentColor = accent,
+                    onClick = { navController.navigate("insights") }
+                )
+            }
             item {
                 MoodWidgetCard(
                     mood = todayMood,
@@ -148,9 +173,6 @@ fun HomeScreen(navController: NavController, goalsViewModel: GoalsViewModel = vi
             }
             item {
                 HydrationWidgetCard() // temp card not sure what we actually want to do here yet
-            }
-            item {
-                AiCoachWidgetCard() // place holder static for now until AI screen is built
             }
             item {
                 ResourceWidgetCard(
