@@ -3,21 +3,27 @@ package com.example.myapplication.ui.home
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import com.example.myapplication.data.security.PasscodeManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -48,6 +54,11 @@ fun HomeScreen(
     insightsViewModel: InsightsViewModel = viewModel()
 ) {
     val context = LocalContext.current
+    val passcodeManager = remember { PasscodeManager(context) }
+    var showOptInDialog by remember {
+        mutableStateOf(!passcodeManager.hasPromptedOnboarding() && !passcodeManager.isPasscodeEnabled())
+    }
+    var showSecuritySettingsDialog by remember { mutableStateOf(false) }
 
     // Setup ViewModel for Mood
     val db = AppDB.getDatabase(context)
@@ -95,95 +106,201 @@ fun HomeScreen(
     ) {
         Spacer(modifier = Modifier.height(48.dp))
 
-        // Header Area
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top
-        ) {
-            Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+            // Header Area
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+                    Text(
+                        text = greeting,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.DarkGray
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "\"$quote\"",
+                        fontStyle = FontStyle.Italic,
+                        color = Color.Gray,
+                        fontSize = 14.sp
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF70DDF2)) // Cyan profile circle
+                        .clickable { showSecuritySettingsDialog = true },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.Person, contentDescription = "Profile & Security", tint = Color.DarkGray)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Widgets Grid
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                contentPadding = PaddingValues(bottom = 24.dp)
+            ) {
+                // Full-width so warning signs are easy to notice on the home page
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    val (background, accent) = levelColors(insightLevel)
+                    InsightWidgetCard(
+                        level = insightLevel,
+                        title = levelTitle(insightLevel),
+                        message = aiInsight.insight?.summary ?: insightReport.headline,
+                        backgroundColor = background,
+                        accentColor = accent,
+                        onClick = { navController.navigate("insights") }
+                    )
+                }
+                item {
+                    MoodWidgetCard(
+                        mood = todayMood,
+                        onClick = { navController.navigate("mood") }
+                    )
+                }
+                item {
+                    GoalsWidgetCard(
+                        completedGoals = goalsViewModel.completedGoals,
+                        totalGoals = goalsViewModel.goals.size,
+                        onClick = { navController.navigate("goals") }
+                    )
+                }
+                item {
+                    StreakWidgetCard() // good widget not functional yet not sure if we want to track this based off of success from putting in
+                    // passcode (not re implemented yet) or we could base this off of succesful user interaction of the daily mood idk
+                }
+                item {
+                    SleepWidgetCard() // temp card not sure what to do or what the intended look is here but good for not
+                    // will be used in the demo and will talk with prof on what the best use of this screen should be
+                    // maybe expanding the AI to take up almost two cards worth then having 4 under idk
+                }
+                item {
+                    HydrationWidgetCard() // temp card not sure what we actually want to do here yet
+                }
+                item {
+                    ResourceWidgetCard(
+                        onClick = { navController.navigate("resources") }
+                    )
+                }
+                item {
+                    JournalWidgetCard(
+                        onClick = { navController.navigate("journal") }
+                    )
+                }
+            }
+        }
+
+    if (showOptInDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                passcodeManager.setPromptedOnboarding(true)
+                showOptInDialog = false
+            },
+            icon = {
+                Icon(Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            },
+            title = {
+                Text("Protect Your Privacy", fontWeight = FontWeight.Bold)
+            },
+            text = {
                 Text(
-                    text = greeting,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
+                    "Would you like to set up a 4-digit passcode to lock your journal entries and personal reflections?",
+                    fontSize = 14.sp,
                     color = Color.DarkGray
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "\"$quote\"",
-                    fontStyle = FontStyle.Italic,
-                    color = Color.Gray,
-                    fontSize = 14.sp
-                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        passcodeManager.setPromptedOnboarding(true)
+                        showOptInDialog = false
+                        navController.navigate("passcode_setup")
+                    }
+                ) {
+                    Text("Set Up Passcode")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        passcodeManager.setPromptedOnboarding(true)
+                        showOptInDialog = false
+                    }
+                ) {
+                    Text("Skip for Now")
+                }
             }
+        )
+    }
 
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF70DDF2)), // Cyan profile circle
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Default.Person, contentDescription = "Profile", tint = Color.DarkGray)
+    if (showSecuritySettingsDialog) {
+        var isEnabled by remember { mutableStateOf(passcodeManager.isPasscodeEnabled()) }
+        AlertDialog(
+            onDismissRequest = { showSecuritySettingsDialog = false },
+            icon = {
+                Icon(Icons.Default.Security, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            },
+            title = {
+                Text("Security & Passcode", fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Column {
+                    Text(
+                        text = if (isEnabled) "Passcode lock is ACTIVE" else "Passcode lock is DISABLED",
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (isEnabled) Color(0xFF2E7D32) else Color.Gray,
+                        fontSize = 15.sp
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = if (isEnabled)
+                            "Your app requires a 4-digit PIN upon opening."
+                        else
+                            "Add a 4-digit PIN and recovery question to protect your journal.",
+                        fontSize = 13.sp,
+                        color = Color.DarkGray
+                    )
+                }
+            },
+            confirmButton = {
+                if (!isEnabled) {
+                    Button(onClick = {
+                        showSecuritySettingsDialog = false
+                        navController.navigate("passcode_setup")
+                    }) {
+                        Text("Enable Passcode")
+                    }
+                } else {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(onClick = {
+                            passcodeManager.disablePasscode()
+                            isEnabled = false
+                        }) {
+                            Text("Turn Off")
+                        }
+                        Button(onClick = {
+                            showSecuritySettingsDialog = false
+                            navController.navigate("passcode_setup")
+                        }) {
+                            Text("Change PIN")
+                        }
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSecuritySettingsDialog = false }) {
+                    Text("Close")
+                }
             }
-        }
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Widgets Grid
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(bottom = 24.dp)
-        ) {
-            // Full-width so warning signs are easy to notice on the home page
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                val (background, accent) = levelColors(insightLevel)
-                InsightWidgetCard(
-                    level = insightLevel,
-                    title = levelTitle(insightLevel),
-                    message = aiInsight.insight?.summary ?: insightReport.headline,
-                    backgroundColor = background,
-                    accentColor = accent,
-                    onClick = { navController.navigate("insights") }
-                )
-            }
-            item {
-                MoodWidgetCard(
-                    mood = todayMood,
-                    onClick = { navController.navigate("mood") }
-                )
-            }
-            item {
-                GoalsWidgetCard(
-                    completedGoals = goalsViewModel.completedGoals,
-                    totalGoals = goalsViewModel.goals.size,
-                    onClick = { navController.navigate("goals") }
-                )
-            }
-            item {
-                StreakWidgetCard() // good widget not functional yet not sure if we want to track this based off of success from putting in
-                // passcode (not re implemented yet) or we could base this off of succesful user interaction of the daily mood idk
-            }
-            item {
-                SleepWidgetCard() // temp card not sure what to do or what the intended look is here but good for not
-                // will be used in the demo and will talk with prof on what the best use of this screen should be
-                // maybe expanding the AI to take up almost two cards worth then having 4 under idk
-            }
-            item {
-                HydrationWidgetCard() // temp card not sure what we actually want to do here yet
-            }
-            item {
-                ResourceWidgetCard(
-                    onClick = { navController.navigate("resources") }
-                )
-            }
-            item {
-                JournalWidgetCard(
-                    onClick = {navController.navigate("journal")}
-                )
-            }
-        }
+        )
     }
 }

@@ -1,18 +1,14 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.compiler)
-    id("com.google.devtools.ksp") version "2.3.6"
+    id("com.google.devtools.ksp")
 }
 if (file("google-services.json").exists()) {
     apply(plugin = "com.google.gms.google-services")
 }
 android {
     namespace = "com.example.myapplication"
-    compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
-    }
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.example.myapplication"
