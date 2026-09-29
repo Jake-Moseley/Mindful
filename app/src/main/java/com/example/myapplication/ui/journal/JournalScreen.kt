@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Build
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -30,6 +31,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -49,6 +51,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.myapplication.data.local.AppDB
 import com.example.myapplication.data.model.JournalEntry
+import com.example.myapplication.ui.home.components.PastelBlue
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -100,6 +103,9 @@ fun JournalScreen(navController: NavController) {
         topBar = {
             TopAppBar(
                 title = { Text("Journal") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = PastelBlue
+                ),
                 navigationIcon = {
                     IconButton(onClick = {
                         selectedEntry?.complete?.let {
@@ -135,7 +141,10 @@ fun JournalScreen(navController: NavController) {
                             onClick = { viewModel.CreateEntry(date) },  //on button click, create entry and pass date
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(4.dp)
+                                .padding(4.dp),
+                            colors = ButtonDefaults.elevatedButtonColors(
+                                containerColor = PastelBlue
+                            )
                         ) {
                             Text("Add Entry")
                         }
@@ -145,7 +154,10 @@ fun JournalScreen(navController: NavController) {
                             onClick = { showDialogComplete = true },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(4.dp)
+                                .padding(4.dp),
+                            colors = ButtonDefaults.elevatedButtonColors(
+                                containerColor = PastelBlue
+                            )
                         ) {
                             Text("Complete Entry")
                         }
@@ -155,7 +167,10 @@ fun JournalScreen(navController: NavController) {
                             onClick = { showDialog = true },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(4.dp)
+                                .padding(4.dp),
+                            colors = ButtonDefaults.elevatedButtonColors(
+                                containerColor = PastelBlue
+                            )
                         ) {
                             Text("Today's Entry Completed")
                         }
@@ -180,9 +195,12 @@ fun JournalScreen(navController: NavController) {
                 items(allEntries) { item ->
                     ElevatedButton(
                         onClick = { selectedEntry = item },
-                        shape = CircleShape
+                        shape = CircleShape,
+                        colors = ButtonDefaults.elevatedButtonColors(
+                            containerColor = PastelBlue
+                        )
                     ) {
-                        Text(LocalDate.parse(item.date).format(formatter))
+                        Text(LocalDate.parse(item.date).format(formatter), color = Color.DarkGray)
                     }
                 }
             }

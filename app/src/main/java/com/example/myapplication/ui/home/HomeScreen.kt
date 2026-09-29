@@ -177,7 +177,12 @@ fun HomeScreen(
             item {
                 ResourceWidgetCard(
                     onClick = { navController.navigate("resources") }
-                ) //
+                )
+            }
+            item {
+                JournalWidgetCard(
+                    onClick = {navController.navigate("journal")}
+                )
             }
         }
     }
