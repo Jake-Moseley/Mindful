@@ -178,7 +178,7 @@ fun UnfilteredList(allResourceEntries: List<ResourceEntry>, innerPadding: Paddin
                 horizontalArrangement = Arrangement.SpaceEvenly) {
                 Image(painterResource(R.drawable.person),
                     contentDescription = null,
-                    modifier = Modifier.size(165.dp))
+                    modifier = Modifier.size(80.dp))
 
                 Spacer(modifier = Modifier.width(20.dp))
 
