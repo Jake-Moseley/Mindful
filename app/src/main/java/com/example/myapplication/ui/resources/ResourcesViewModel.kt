@@ -76,9 +76,12 @@ class ResourcesViewModel(private val resourceDAO: ResourcesDAO) : ViewModel() {
                 )
 
                 //Get live data
-                val liveProviders = repository.fetchMentalHealthProviders(limit = 30)
-                for (provider in liveProviders) {
-                    resourceDAO.insertResource(provider)
+                val localCities = listOf("Dallas", "Fort Worth", "Denton", "Frisco", "Plano", "Lewisville", "Grapevine", "Garland", "Duncanville", "Irving", "Euless")
+                for (localCity in localCities) {
+                    val liveProviders = repository.fetchMentalHealthProviders(city = localCity, state = "TX", limit = 30)
+                    for (provider in liveProviders) {
+                        resourceDAO.insertResource(provider)
+                    }
                 }
             }
         }

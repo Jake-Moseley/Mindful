@@ -12,12 +12,15 @@ class NpiResourceRepository {
     //Base URL for NPI Registry
     private val baseUrl = "https://npiregistry.cms.hhs.gov/api/?version=2.1"
 
-    suspend fun fetchMentalHealthProviders(limit: Int = 30): List<ResourceEntry> =
+    suspend fun fetchMentalHealthProviders(limit: Int = 30, city: String = "Dallas", state: String = "TX"): List<ResourceEntry> =
         withContext(Dispatchers.IO) {
             val providerList = mutableListOf<ResourceEntry>()
 
             try {
-                val urlString = "$baseUrl&taxonomy_description=Psychologist&enumeration_type=NPI-1&limit=$limit"
+                var urlString = "$baseUrl&taxonomy_description=Psychologist&enumeration_type=NPI-1&limit=$limit"
+                if (state.isNotBlank()) urlString += "&state=$state"
+                if (city.isNotBlank()) urlString += "&city=$city"
+
                 val url = URL(urlString)
                 val connection = url.openConnection() as HttpURLConnection
                 connection.requestMethod = "GET"
