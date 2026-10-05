@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.local.ResourcesDAO
 import com.example.myapplication.data.model.ResourceEntry
+import com.example.myapplication.data.repository.NpiResourceRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -44,70 +45,44 @@ class ResourcesViewModel(private val resourceDAO: ResourcesDAO) : ViewModel() {
 
     //do this when application is started
     init {
-        CreateDemoResources()
-        Log.d("Resources DB Load", "Loaded Demo Entries into DB")
+        loadResources()
     }
 
-    //If no entries exist, create demo entries
-    fun CreateDemoResources() {
+    private val repository = NpiResourceRepository()
+    fun loadResources() {
         viewModelScope.launch {
-            if (resourceDAO.count() == 0) {
+            //check db count
+            val currentCount = resourceDAO.count()
+            Log.d("ResourcesDB", "Current DB count: $currentCount")
+
+            //If db has less than 10 entries, reset list and repopulate
+            if (currentCount < 10) {
+                Log.d("ResourcesDB", "Clearing old entries and fetching live NPI Registry data...")
+                resourceDAO.deleteAll()
+
                 resourceDAO.insertResource(
                     ResourceEntry(
-                        name = "Clark Daniels",
-                        description = "Clark is a fictional Mental Health Professional. He focuses on helping people who struggle with low self-esteem and anxiety. He has been practicing as a licensed psychologist for 5 years now and is based in Lewisville.",
-                        phoneNum = "999-999-9999"
+                        name = "988 Suicide & Crisis Lifeline",
+                        description = "Free and confidential 24/7 support for emotional distress or suicidal crisis. Call or text 988.",
+                        phoneNum = "988"
                     )
                 )
                 resourceDAO.insertResource(
                     ResourceEntry(
-                        name = "Jessica Smith",
-                        description = "Jessica is a fictional Mental Health Professional. She focuses on helping people who struggle with low self-esteem and anxiety. She has been practicing as a licensed psychologist for 5 years now and is based in Lewisville.",
-                        phoneNum = "999-999-9999"
+                        name = "Crisis Text Line",
+                        description = "Free 24/7 support with a trained crisis counselor for help with anxiety or depression.",
+                        phoneNum = "Text HOME to 741741"
                     )
                 )
-                resourceDAO.insertResource(
-                    ResourceEntry(
-                        name = "Jane Tran",
-                        description = "Jane is a fictional Mental Health Professional. She focuses on helping people who struggle with low self-esteem and anxiety. She has been practicing as a licensed psychologist for 5 years now and is based in Lewisville.",
-                        phoneNum = "999-999-9999"
-                    )
-                )
-                resourceDAO.insertResource(
-                    ResourceEntry(
-                        name = "John Power",
-                        description = "John is a fictional Mental Health Professional. He focuses on helping people who struggle with low self-esteem and anxiety. He has been practicing as a licensed psychologist for 5 years now and is based in Lewisville.",
-                        phoneNum = "999-999-9999"
-                    )
-                )
-                resourceDAO.insertResource(
-                    ResourceEntry(
-                        name = "Steve Ryan",
-                        description = "Steve is a fictional Mental Health Professional. He focuses on helping people who struggle with low self-esteem and anxiety. He has been practicing as a licensed psychologist for 5 years now and is based in Lewisville.",
-                        phoneNum = "999-999-9999"
-                    )
-                )
-                resourceDAO.insertResource(
-                    ResourceEntry(
-                        name = "Marco Bernadino",
-                        description = "Marco is a fictional Mental Health Professional. He focuses on helping people who struggle with low self-esteem and anxiety. He has been practicing as a licensed psychologist for 5 years now and is based in Lewisville.",
-                        phoneNum = "999-999-9999"
-                    )
-                )
-                resourceDAO.insertResource(
-                    ResourceEntry(
-                        name = "Brandon Hughes",
-                        description = "Brandon is a fictional Mental Health Professional. He focuses on helping people who struggle with low self-esteem and anxiety. He has been practicing as a licensed psychologist for 5 years now and is based in Lewisville.",
-                        phoneNum = "999-999-9999"
-                    )
-                )
-                resourceDAO.insertResource(
-                    ResourceEntry(
-                        name = "Jason Lin",
-                        description = "Jason is a fictional Mental Health Professional. He focuses on helping people who struggle with low self-esteem and anxiety. He has been practicing as a licensed psychologist for 5 years now and is based in Lewisville.",
-                        phoneNum = "999-999-9999"
-                    )
-                )
+
+                //Get live data
+                val localCities = listOf("Dallas", "Fort Worth", "Denton", "Frisco", "Plano", "Lewisville", "Grapevine", "Garland", "Duncanville", "Irving", "Euless")
+                for (localCity in localCities) {
+                    val liveProviders = repository.fetchMentalHealthProviders(city = localCity, state = "TX", limit = 30)
+                    for (provider in liveProviders) {
+                        resourceDAO.insertResource(provider)
+                    }
+                }
             }
         }
     }
