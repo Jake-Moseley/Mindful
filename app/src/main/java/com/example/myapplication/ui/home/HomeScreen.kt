@@ -6,14 +6,15 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -23,7 +24,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import com.example.myapplication.data.security.PasscodeManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -32,19 +32,18 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.myapplication.data.local.AppDB
+import com.example.myapplication.data.security.PasscodeManager
+import com.example.myapplication.ui.goals.GoalsViewModel
 import com.example.myapplication.ui.home.components.*
+import com.example.myapplication.ui.insights.InsightsViewModel
+import com.example.myapplication.ui.insights.levelColors
+import com.example.myapplication.ui.insights.levelTitle
 import com.example.myapplication.ui.mood.MoodType
 import com.example.myapplication.ui.mood.MoodViewModel
 import com.example.myapplication.ui.mood.MoodViewModelFactory
 import org.json.JSONArray
 import java.time.LocalDate
 import java.util.Calendar
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import com.example.myapplication.ui.insights.InsightsViewModel
-import com.example.myapplication.ui.insights.levelColors
-import com.example.myapplication.ui.insights.levelTitle
-
-import com.example.myapplication.ui.goals.GoalsViewModel
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -58,7 +57,10 @@ fun HomeScreen(
     var showOptInDialog by remember {
         mutableStateOf(!passcodeManager.hasPromptedOnboarding() && !passcodeManager.isPasscodeEnabled())
     }
-    var showSecuritySettingsDialog by remember { mutableStateOf(false) }
+    var showSettingsDialog by remember { mutableStateOf(false) }
+
+    // Daily goals rotate at midnight; refresh if the app was left open overnight
+    LaunchedEffect(Unit) { goalsViewModel.refreshIfNewDay() }
 
     // Setup ViewModel for Mood
     val db = AppDB.getDatabase(context)
@@ -69,9 +71,14 @@ fun HomeScreen(
     val moodEntries by viewModel.moodEntries.collectAsState()
 
     // Find today's mood
-    val todayStr = LocalDate.now().toString()
-    val todayMoodEntry = moodEntries.find { it.date == todayStr }
+    val today = LocalDate.now()
+    val todayMoodEntry = moodEntries.find { it.date == today.toString() }
     val todayMood = todayMoodEntry?.let { MoodType.fromInt(it.mood) }
+
+    // Consecutive days with a logged mood
+    val moodStreak = remember(moodEntries, today) {
+        calculateMoodStreak(moodEntries.map { it.date }, today)
+    }
 
     // AI Behavior Pattern Analysis
     val insightReport by insightsViewModel.report.collectAsState()
@@ -93,111 +100,108 @@ fun HomeScreen(
     // Dynamic Greeting
     val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
     val greeting = when {
-        hour < 12 -> "Good morning \uD83D\uDC4B"
-        hour < 17 -> "Good afternoon \uD83D\uDC4B"
-        else -> "Good evening \uD83D\uDC4B"
+        hour < 12 -> "Good morning 👋"
+        hour < 17 -> "Good afternoon 👋"
+        else -> "Good evening 👋"
     }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFFFFDF9)) // Very light warm background
+            .background(Color(0xFFFFFDF9))
             .padding(horizontal = 24.dp)
     ) {
         Spacer(modifier = Modifier.height(48.dp))
 
-            // Header Area
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
-            ) {
-                Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
-                    Text(
-                        text = greeting,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.DarkGray
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "\"$quote\"",
-                        fontStyle = FontStyle.Italic,
-                        color = Color.Gray,
-                        fontSize = 14.sp
-                    )
-                }
-
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFF70DDF2)) // Cyan profile circle
-                        .clickable { showSecuritySettingsDialog = true },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Default.Person, contentDescription = "Profile & Security", tint = Color.DarkGray)
-                }
+        // Header Area
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top
+        ) {
+            Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+                Text(
+                    text = greeting,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.DarkGray
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "\"$quote\"",
+                    fontStyle = FontStyle.Italic,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.DarkGray,
+                    fontSize = 17.sp,
+                    lineHeight = 24.sp
+                )
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Widgets Grid
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                contentPadding = PaddingValues(bottom = 24.dp)
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF70DDF2))
+                    .clickable(onClickLabel = "Open settings") { showSettingsDialog = true },
+                contentAlignment = Alignment.Center
             ) {
-                // Full-width so warning signs are easy to notice on the home page
-                item(span = { GridItemSpan(maxLineSpan) }) {
-                    val (background, accent) = levelColors(insightLevel)
-                    InsightWidgetCard(
-                        level = insightLevel,
-                        title = levelTitle(insightLevel),
-                        message = aiInsight.insight?.summary ?: insightReport.headline,
-                        backgroundColor = background,
-                        accentColor = accent,
-                        onClick = { navController.navigate("insights") }
-                    )
-                }
-                item {
-                    MoodWidgetCard(
-                        mood = todayMood,
-                        onClick = { navController.navigate("mood") }
-                    )
-                }
-                item {
-                    GoalsWidgetCard(
-                        completedGoals = goalsViewModel.completedGoals,
-                        totalGoals = goalsViewModel.goals.size,
-                        onClick = { navController.navigate("goals") }
-                    )
-                }
-                item {
-                    StreakWidgetCard() // good widget not functional yet not sure if we want to track this based off of success from putting in
-                    // passcode (not re implemented yet) or we could base this off of succesful user interaction of the daily mood idk
-                }
-                item {
-                    SleepWidgetCard() // temp card not sure what to do or what the intended look is here but good for not
-                    // will be used in the demo and will talk with prof on what the best use of this screen should be
-                    // maybe expanding the AI to take up almost two cards worth then having 4 under idk
-                }
-                item {
-                    HydrationWidgetCard() // temp card not sure what we actually want to do here yet
-                }
-                item {
-                    ResourceWidgetCard(
-                        onClick = { navController.navigate("resources") }
-                    )
-                }
-                item {
-                    JournalWidgetCard(
-                        onClick = { navController.navigate("journal") }
-                    )
-                }
+                Icon(Icons.Default.Settings, contentDescription = "Settings", tint = Color.DarkGray)
             }
         }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Widgets Grid
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(bottom = 24.dp)
+        ) {
+            // Full-width so warning signs are easy to notice on the home page
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                val (background, accent) = levelColors(insightLevel)
+                InsightWidgetCard(
+                    level = insightLevel,
+                    title = levelTitle(insightLevel),
+                    message = aiInsight.insight?.summary ?: insightReport.headline,
+                    backgroundColor = background,
+                    accentColor = accent,
+                    onClick = { navController.navigate("insights") }
+                )
+            }
+            item {
+                MoodWidgetCard(
+                    mood = todayMood,
+                    onClick = { navController.navigate("mood") }
+                )
+            }
+            item {
+                GoalsWidgetCard(
+                    completedGoals = goalsViewModel.completedGoals,
+                    totalGoals = goalsViewModel.goals.size,
+                    onClick = { navController.navigate("goals") }
+                )
+            }
+            item {
+                StreakWidgetCard(
+                    streakDays = moodStreak,
+                    onClick = { navController.navigate("mood") }
+                )
+            }
+            item {
+                ResourceWidgetCard(
+                    onClick = { navController.navigate("resources") }
+                )
+            }
+            // Full-width to bookend the grid, matching the insights card
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                JournalWidgetCard(
+                    onClick = { navController.navigate("journal") }
+                )
+            }
+        }
+    }
 
     if (showOptInDialog) {
         AlertDialog(
@@ -242,65 +246,76 @@ fun HomeScreen(
         )
     }
 
-    if (showSecuritySettingsDialog) {
-        var isEnabled by remember { mutableStateOf(passcodeManager.isPasscodeEnabled()) }
-        AlertDialog(
-            onDismissRequest = { showSecuritySettingsDialog = false },
-            icon = {
-                Icon(Icons.Default.Security, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+    if (showSettingsDialog) {
+        SettingsDialog(
+            passcodeManager = passcodeManager,
+            onSetUpPasscode = {
+                showSettingsDialog = false
+                navController.navigate("passcode_setup")
             },
-            title = {
-                Text("Security & Passcode", fontWeight = FontWeight.Bold)
-            },
-            text = {
-                Column {
-                    Text(
-                        text = if (isEnabled) "Passcode lock is ACTIVE" else "Passcode lock is DISABLED",
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (isEnabled) Color(0xFF2E7D32) else Color.Gray,
-                        fontSize = 15.sp
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = if (isEnabled)
-                            "Your app requires a 4-digit PIN upon opening."
-                        else
-                            "Add a 4-digit PIN and recovery question to protect your journal.",
-                        fontSize = 13.sp,
-                        color = Color.DarkGray
-                    )
-                }
-            },
-            confirmButton = {
-                if (!isEnabled) {
-                    Button(onClick = {
-                        showSecuritySettingsDialog = false
-                        navController.navigate("passcode_setup")
-                    }) {
+            onDismiss = { showSettingsDialog = false }
+        )
+    }
+}
+
+@Composable
+private fun SettingsDialog(
+    passcodeManager: PasscodeManager,
+    onSetUpPasscode: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    var isPasscodeEnabled by remember { mutableStateOf(passcodeManager.isPasscodeEnabled()) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Icon(Icons.Default.Settings, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        },
+        title = { Text("Settings", fontWeight = FontWeight.Bold) },
+        text = {
+            Column {
+                // Security
+                Text("Security & Passcode", fontWeight = FontWeight.SemiBold, color = Color.DarkGray, fontSize = 15.sp)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = if (isPasscodeEnabled) "Passcode lock is ACTIVE" else "Passcode lock is DISABLED",
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (isPasscodeEnabled) Color(0xFF2E7D32) else Color.Gray,
+                    fontSize = 14.sp
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = if (isPasscodeEnabled)
+                        "Your app requires a 4-digit PIN upon opening."
+                    else
+                        "Add a 4-digit PIN and recovery question to protect your journal.",
+                    fontSize = 13.sp,
+                    color = Color.DarkGray
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                if (!isPasscodeEnabled) {
+                    Button(onClick = onSetUpPasscode) {
                         Text("Enable Passcode")
                     }
                 } else {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedButton(onClick = {
                             passcodeManager.disablePasscode()
-                            isEnabled = false
+                            isPasscodeEnabled = false
                         }) {
                             Text("Turn Off")
                         }
-                        Button(onClick = {
-                            showSecuritySettingsDialog = false
-                            navController.navigate("passcode_setup")
-                        }) {
+                        Button(onClick = onSetUpPasscode) {
                             Text("Change PIN")
                         }
                     }
                 }
-            },
-            dismissButton = {
-                TextButton(onClick = { showSecuritySettingsDialog = false }) {
-                    Text("Close")
-                }
             }
-        )
-    }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close")
+            }
+        }
+    )
 }

@@ -4,27 +4,24 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Bedtime
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Face
-import androidx.compose.material.icons.filled.LocalFireDepartment
-import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Campaign
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.EditNote
+import androidx.compose.material.icons.filled.Face
+import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.filled.PhoneInTalk
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.material.icons.filled.PhoneInTalk
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.text.style.TextOverflow
 import com.example.myapplication.data.ai.ConcernLevel
-
 import com.example.myapplication.ui.mood.MoodType
 
 val PastelBlue = Color(0xFFDDF4F8)
@@ -98,40 +95,25 @@ fun GoalsWidgetCard(completedGoals: Int, totalGoals: Int, onClick: () -> Unit) {
     }
 }
 
+/** Shows how many days in a row the user has logged a mood (see calculateMoodStreak). */
 @Composable
-fun StreakWidgetCard() { //refer to home screen comments for knowledge on what we are doing with the different widgets
-    // not certain on how what we want implemnent here just yet
+fun StreakWidgetCard(streakDays: Int, onClick: () -> Unit) {
     DashboardCard(
         backgroundColor = PastelOrange,
         icon = Icons.Default.LocalFireDepartment,
-        title = "Streak"
+        title = "Mood Streak",
+        onClick = onClick
     ) {
-        Text("7", fontWeight = FontWeight.Bold, color = Color.DarkGray, fontSize = 24.sp)
-        Text("days", color = Color.DarkGray, fontSize = 14.sp)
-    }
-}
-
-@Composable
-fun SleepWidgetCard() {
-    DashboardCard(
-        backgroundColor = PastelBlue,
-        icon = Icons.Default.Bedtime,
-        title = "Sleep"
-    ) {
-        Text("7.5h", fontWeight = FontWeight.Bold, color = Color.DarkGray, fontSize = 24.sp)
-        Text("last night", color = Color.DarkGray, fontSize = 14.sp)
-    }
-}
-
-@Composable
-fun HydrationWidgetCard() {
-    DashboardCard(
-        backgroundColor = PastelCyan,
-        icon = Icons.Default.WaterDrop,
-        title = "Hydration"
-    ) {
-        Text("6 / 8", fontWeight = FontWeight.Bold, color = Color.DarkGray, fontSize = 24.sp)
-        Text("glasses", color = Color.DarkGray, fontSize = 14.sp)
+        Text("$streakDays", fontWeight = FontWeight.Bold, color = Color.DarkGray, fontSize = 24.sp)
+        Text(
+            text = when (streakDays) {
+                0 -> "log a mood to start"
+                1 -> "day"
+                else -> "days in a row"
+            },
+            color = Color.DarkGray,
+            fontSize = 14.sp
+        )
     }
 }
 
@@ -189,12 +171,34 @@ fun ResourceWidgetCard(onClick: () -> Unit) {
 
 @Composable
 fun JournalWidgetCard(onClick: () -> Unit) {
-    DashboardCard(
-        backgroundColor = PastelCyan,
-        icon = Icons.Default.EditNote,
-        title = "Journal",
-        onClick = onClick
+    // Wide layout to match InsightWidgetCard
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClickLabel = "Open journal") { onClick() },
+        colors = CardDefaults.cardColors(containerColor = PastelCyan),
+        shape = RoundedCornerShape(24.dp)
     ) {
-        Text("Entry", fontWeight = FontWeight.Bold, color = Color.DarkGray, fontSize = 24.sp)
+        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.Top) {
+            Icon(imageVector = Icons.Default.EditNote, contentDescription = null, tint = Color.DarkGray)
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Journal", color = Color.Gray, fontSize = 13.sp)
+                Text("Write an Entry", fontWeight = FontWeight.Bold, color = Color.DarkGray, fontSize = 18.sp)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    "Take a moment to get your thoughts down.",
+                    color = Color.DarkGray,
+                    fontSize = 14.sp
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "Tap to open your journal →",
+                    color = Color.DarkGray,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
     }
 }
