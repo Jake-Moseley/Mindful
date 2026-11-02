@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -29,6 +30,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -41,6 +43,8 @@ import com.example.myapplication.data.model.Goal
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GoalsScreen(navController: NavController, viewModel: GoalsViewModel = viewModel()) {
+    // Pick up the new day's goals if the app was left open overnight
+    LaunchedEffect(Unit) { viewModel.refreshIfNewDay() }
     val goals = viewModel.goals
     val completedGoals = goals.count { it.isCompleted }
     Scaffold(
@@ -121,9 +125,12 @@ private fun GoalItemCard(goal: Goal, onClick: () -> Unit) {
             Text(
                 text = goal.title,
                 style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                maxLines = 2, // some daily goals are long
+                modifier = Modifier.weight(1f)
             )
             if (goal.isCompleted) {
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "Completed",
                     style = MaterialTheme.typography.bodyLarge,
