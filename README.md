@@ -64,4 +64,4 @@ The app runs without any extra setup. Pattern Insights uses on-device analysis u
 ## Contributors
 - [Jake Moseley](https://github.com/Jake-Moseley) – Mood Tracker, Daily Goals, Pattern Insights (AI), and project documentation
 - [Alex DeWolf](https://github.com/Silencieuxx) – Journal and Professional Resources
-- [Kallen Schulz](https://github.com/Kallen1234) – Project setup, UI/UX layout, and Daily Quotes
+- [Kallen Schulz](https://github.com/Kallen1234) – Project setup, UI/UX layout, Home Page and Daily Quotes
