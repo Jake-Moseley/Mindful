@@ -304,9 +304,12 @@ private fun MoodTrendCard(report: PatternReport) {
             if (report.moodCounts.isNotEmpty()) {
                 HorizontalDivider()
                 Text("Last 30 days", fontSize = 13.sp, color = Color.Gray)
-                MoodType.entries.forEach { mood ->
-                    MoodCountBar(mood, report.moodCounts[mood] ?: 0, report.moodCounts.values.max())
-                }
+                // Only moods that were actually logged, most frequent first (there are 20+ mood options)
+                val maxCount = report.moodCounts.values.max()
+                report.moodCounts.entries
+                    .sortedByDescending { it.value }
+                    .take(6)
+                    .forEach { (mood, count) -> MoodCountBar(mood, count, maxCount) }
             }
         }
     }

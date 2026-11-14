@@ -57,6 +57,8 @@ object InsightPrompt {
 
         val localFindings = local.observations.joinToString("\n") { "- $it" }.ifEmpty { "(none)" }
 
+        val moodScale = MoodType.entries.joinToString { "${it.label} (${it.category.label.lowercase()})" }
+
         return """
             |You are the behavior pattern analysis feature of Mindful, a mental health companion app.
             |Look at the user's recent mood logs, journal entries and goals, and describe recurring
@@ -72,7 +74,7 @@ object InsightPrompt {
             |- Base everything only on the data below. Do not invent events.
             |
             |Today's date: $today
-            |Mood scale used by the app: Happy, Sad, Frustrated, Tired.
+            |Moods the user can log: $moodScale.
             |
             |Mood logs (last 30 days):
             |$moodLines
