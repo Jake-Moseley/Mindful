@@ -106,98 +106,101 @@ fun HomeScreen(
     ) {
         Spacer(modifier = Modifier.height(48.dp))
 
-            // Header Area
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
-            ) {
-                Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
-                    Text(
-                        text = greeting,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.DarkGray
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "\"$quote\"",
-                        fontStyle = FontStyle.Italic,
-                        color = Color.Gray,
-                        fontSize = 14.sp
-                    )
-                }
-
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFF70DDF2)) // Cyan profile circle
-                        .clickable { showSecuritySettingsDialog = true },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Default.Person, contentDescription = "Profile & Security", tint = Color.DarkGray)
-                }
+        // Header Area
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top
+        ) {
+            Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+                Text(
+                    text = greeting,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.DarkGray
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "\"$quote\"",
+                    fontStyle = FontStyle.Italic,
+                    color = Color.Gray,
+                    fontSize = 14.sp
+                )
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Widgets Grid
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                contentPadding = PaddingValues(bottom = 24.dp)
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF70DDF2)) // Cyan profile circle
+                    .clickable { showSecuritySettingsDialog = true },
+                contentAlignment = Alignment.Center
             ) {
-                // Full-width so warning signs are easy to notice on the home page
-                item(span = { GridItemSpan(maxLineSpan) }) {
-                    val (background, accent) = levelColors(insightLevel)
-                    InsightWidgetCard(
-                        level = insightLevel,
-                        title = levelTitle(insightLevel),
-                        message = aiInsight.insight?.summary ?: insightReport.headline,
-                        backgroundColor = background,
-                        accentColor = accent,
-                        onClick = { navController.navigate("insights") }
-                    )
-                }
-                item {
-                    MoodWidgetCard(
-                        mood = todayMood,
-                        onClick = { navController.navigate("mood") }
-                    )
-                }
-                item {
-                    GoalsWidgetCard(
-                        completedGoals = goalsViewModel.completedGoals,
-                        totalGoals = goalsViewModel.goals.size,
-                        onClick = { navController.navigate("goals") }
-                    )
-                }
-                item {
-                    StreakWidgetCard() // good widget not functional yet not sure if we want to track this based off of success from putting in
-                    // passcode (not re implemented yet) or we could base this off of succesful user interaction of the daily mood idk
-                }
-                item {
-                    SleepWidgetCard() // temp card not sure what to do or what the intended look is here but good for not
-                    // will be used in the demo and will talk with prof on what the best use of this screen should be
-                    // maybe expanding the AI to take up almost two cards worth then having 4 under idk
-                }
-                item {
-                    HydrationWidgetCard() // temp card not sure what we actually want to do here yet
-                }
-                item {
-                    ResourceWidgetCard(
-                        onClick = { navController.navigate("resources") }
-                    )
-                }
-                item {
-                    JournalWidgetCard(
-                        onClick = { navController.navigate("journal") }
-                    )
-                }
+                Icon(Icons.Default.Person, contentDescription = "Profile & Security", tint = Color.DarkGray)
             }
         }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Widgets Grid
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(bottom = 24.dp)
+        ) {
+            // Full-width so warning signs are easy to notice on the home page
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                val (background, accent) = levelColors(insightLevel)
+                InsightWidgetCard(
+                    level = insightLevel,
+                    title = levelTitle(insightLevel),
+                    message = aiInsight.insight?.summary ?: insightReport.headline,
+                    backgroundColor = background,
+                    accentColor = accent,
+                    onClick = { navController.navigate("insights") }
+                )
+            }
+            item {
+                MoodWidgetCard(
+                    mood = todayMood,
+                    onClick = { navController.navigate("mood") }
+                )
+            }
+            item {
+                GoalsWidgetCard(
+                    completedGoals = goalsViewModel.completedGoals,
+                    totalGoals = goalsViewModel.goals.size,
+                    onClick = { navController.navigate("goals") }
+                )
+            }
+            item {
+                // Days in a row with at least one goal completed
+                StreakWidgetCard(
+                    days = goalsViewModel.streak,
+                    onClick = { navController.navigate("goals") }
+                )
+            }
+            item {
+                SleepWidgetCard() // temp card not sure what to do or what the intended look is here but good for not
+                // will be used in the demo and will talk with prof on what the best use of this screen should be
+                // maybe expanding the AI to take up almost two cards worth then having 4 under idk
+            }
+            item {
+                HydrationWidgetCard() // temp card not sure what we actually want to do here yet
+            }
+            item {
+                ResourceWidgetCard(
+                    onClick = { navController.navigate("resources") }
+                )
+            }
+            item {
+                JournalWidgetCard(
+                    onClick = { navController.navigate("journal") }
+                )
+            }
+        }
+    }
 
     if (showOptInDialog) {
         AlertDialog(

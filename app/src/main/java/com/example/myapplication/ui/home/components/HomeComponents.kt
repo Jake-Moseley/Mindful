@@ -98,16 +98,17 @@ fun GoalsWidgetCard(completedGoals: Int, totalGoals: Int, onClick: () -> Unit) {
     }
 }
 
+/** Days in a row with at least one goal completed (from GoalsViewModel.streak). */
 @Composable
-fun StreakWidgetCard() { //refer to home screen comments for knowledge on what we are doing with the different widgets
-    // not certain on how what we want implemnent here just yet
+fun StreakWidgetCard(days: Int, onClick: () -> Unit = {}) {
     DashboardCard(
         backgroundColor = PastelOrange,
         icon = Icons.Default.LocalFireDepartment,
-        title = "Streak"
+        title = "Goal Streak",
+        onClick = onClick
     ) {
-        Text("7", fontWeight = FontWeight.Bold, color = Color.DarkGray, fontSize = 24.sp)
-        Text("days", color = Color.DarkGray, fontSize = 14.sp)
+        Text("$days", fontWeight = FontWeight.Bold, color = Color.DarkGray, fontSize = 24.sp)
+        Text(if (days == 1) "day" else "days", color = Color.DarkGray, fontSize = 14.sp)
     }
 }
 
