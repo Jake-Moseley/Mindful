@@ -59,6 +59,9 @@ import java.time.Duration
 import java.util.Locale
 import com.example.myapplication.ui.mood.MoodType
 import kotlinx.coroutines.delay
+import androidx.compose.animation.Crossfade
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 
 val PastelBlue = Color(0xFFDDF4F8)
 val PastelYellow = Color(0xFFFBE4B9)
@@ -478,6 +481,45 @@ fun InsightWidgetCard(
                     )
                 }
             }
+        }
+    }
+}
+
+private val QuoteAccent = Color(0xFFD98A3D)
+
+/**
+ * Quote of the day, shown small under the greeting with a thin accent bar like a pull quote.
+ * Tapping it fades to another quote.
+ */
+@Composable
+fun DailyQuote(quote: String, onShuffle: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(IntrinsicSize.Min)
+            .clip(RoundedCornerShape(6.dp))
+            .clickable(onClickLabel = "Show another quote") { onShuffle() }
+            .padding(vertical = 2.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .width(3.dp)
+                .fillMaxHeight()
+                .clip(RoundedCornerShape(2.dp))
+                .background(QuoteAccent.copy(alpha = 0.55f))
+        )
+        Spacer(modifier = Modifier.width(10.dp))
+        Crossfade(targetState = quote, animationSpec = tween(450), label = "quote") { shown ->
+            Text(
+                text = shown,
+                fontFamily = FontFamily.Serif,
+                fontStyle = FontStyle.Italic,
+                fontSize = 15.sp,
+                lineHeight = 21.sp,
+                color = Color(0xFF5E5E5E),
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }

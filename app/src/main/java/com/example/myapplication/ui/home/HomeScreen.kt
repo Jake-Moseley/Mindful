@@ -64,6 +64,8 @@ import com.example.myapplication.ui.mood.MoodViewModelFactory
 import org.json.JSONArray
 import java.time.LocalDate
 import java.util.Calendar
+import kotlin.random.Random
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import com.example.myapplication.ui.insights.InsightsViewModel
 import com.example.myapplication.ui.insights.levelColors
@@ -137,39 +139,46 @@ fun HomeScreen(
         insightsViewModel.updateSleep(health.sleepByDate)
     }
 
-    // Dynamic Quote
-    val quote = remember {
+    // Quotes: starts on today's quote, tapping the card shows another
+    val quotes = remember {
         try {
-            val json = context.assets.open("Quotes.json").bufferedReader().readText()
-            val array = JSONArray(json)
-            val dayOfYear = Calendar.getInstance().get(Calendar.DAY_OF_YEAR)
-            array.getString(dayOfYear % array.length())
+            val array = JSONArray(context.assets.open("Quotes.json").bufferedReader().readText())
+            List(array.length()) { array.getString(it) }
         } catch (_: Exception) {
-            "Small steps every day lead to big changes."
-        }
+            emptyList()
+        }.ifEmpty { listOf("Small steps every day lead to big changes.") }
+    }
+    var quoteIndex by remember {
+        mutableIntStateOf(Calendar.getInstance().get(Calendar.DAY_OF_YEAR) % quotes.size)
+    }
+    val onShuffleQuote: () -> Unit = {
+        // Jump to a random quote other than the current one
+        if (quotes.size > 1) quoteIndex = (quoteIndex + 1 + Random.nextInt(quotes.size - 1)) % quotes.size
     }
 
     // Dynamic Greeting
     val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
-    val greeting = when {
-        hour < 12 -> "Good morning"
-        hour < 17 -> "Good afternoon"
-        else -> "Good evening"
+    // Emoji follows the time of day; late nights get a gentler check-in
+    val (greeting, greetingEmoji) = when (hour) {
+        in 5..11 -> "Good morning" to "☀️"
+        in 12..16 -> "Good afternoon" to "🌤️"
+        in 17..21 -> "Good evening" to "🌇"
+        else -> "Hey, night owl" to "🌙"
     }
     val todayLabel = remember { LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, MMMM d")) }
 
     // Cards cascade in when the screen opens; this remembers which ones already did
     val played = remember { mutableSetOf<Int>() }
 
-    // The waving hand waves a couple of times when the screen opens
-    val wave = remember { Animatable(0f) }
+    // The emoji pops in, then tilts back and forth once
+    val emojiScale = remember { Animatable(0f) }
+    val emojiTilt = remember { Animatable(0f) }
     LaunchedEffect(Unit) {
-        delay(400)
-        repeat(2) {
-            wave.animateTo(22f, tween(160))
-            wave.animateTo(-10f, tween(160))
-        }
-        wave.animateTo(0f, spring(dampingRatio = 0.5f))
+        delay(350)
+        emojiScale.animateTo(1f, spring(dampingRatio = 0.45f, stiffness = 300f))
+        emojiTilt.animateTo(14f, tween(180))
+        emojiTilt.animateTo(-10f, tween(220))
+        emojiTilt.animateTo(0f, spring(dampingRatio = 0.5f))
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -205,21 +214,18 @@ fun HomeScreen(
                                 color = Color(0xFF2B2B2B)
                             )
                             Text(
-                                text = " \uD83D\uDC4B",
-                                fontSize = 26.sp,
+                                text = " $greetingEmoji",
+                                fontSize = 24.sp,
                                 modifier = Modifier.graphicsLayer {
-                                    rotationZ = wave.value
-                                    transformOrigin = TransformOrigin(0.7f, 0.9f)
+                                    scaleX = emojiScale.value
+                                    scaleY = emojiScale.value
+                                    rotationZ = emojiTilt.value
+                                    transformOrigin = TransformOrigin(0.6f, 0.6f)
                                 }
                             )
                         }
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "\"$quote\"",
-                            fontStyle = FontStyle.Italic,
-                            color = Color.Gray,
-                            fontSize = 14.sp
-                        )
+                        DailyQuote(quote = quotes[quoteIndex], onShuffle = onShuffleQuote)
                     }
 
                     Box(
