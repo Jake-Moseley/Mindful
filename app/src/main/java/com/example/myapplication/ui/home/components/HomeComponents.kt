@@ -1,37 +1,165 @@
 package com.example.myapplication.ui.home.components
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Bedtime
+import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.filled.PhoneInTalk
 import androidx.compose.material.icons.filled.WaterDrop
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Campaign
-import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.material.icons.filled.PhoneInTalk
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.text.style.TextOverflow
 import com.example.myapplication.data.ai.ConcernLevel
-
+import com.example.myapplication.data.health.HealthRepository
+import com.example.myapplication.data.health.HealthStatus
+import java.time.Duration
+import java.util.Locale
 import com.example.myapplication.ui.mood.MoodType
+import kotlinx.coroutines.delay
 
 val PastelBlue = Color(0xFFDDF4F8)
 val PastelYellow = Color(0xFFFBE4B9)
 val PastelOrange = Color(0xFFF5CD9B)
 val PastelCyan = Color(0xFF70DDF2)
 val PastelCream = Color(0xFFFBE6CD)
+
+// =============================================================================================
+// Background and motion helpers
+// =============================================================================================
+
+/**
+ * Warm gradient that slowly shifts color, with soft shapes drifting behind the home screen.
+ * Place it first inside a full-screen Box so everything else draws on top.
+ */
+@Composable
+fun HomeBackground() {
+    val transition = rememberInfiniteTransition(label = "homeBackground")
+    val shift by transition.animateFloat(0f, 1f, infiniteRepeatable(tween(14000, easing = LinearEasing), RepeatMode.Reverse), label = "shift")
+    val driftA by transition.animateFloat(0f, 1f, infiniteRepeatable(tween(11000, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "driftA")
+    val driftB by transition.animateFloat(0f, 1f, infiniteRepeatable(tween(16000, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "driftB")
+
+    val top = lerp(Color(0xFFFFF4E6), Color(0xFFEAF7FA), shift)
+    val middle = Color(0xFFFFFDF9)
+    val bottom = lerp(Color(0xFFEAF7FA), Color(0xFFFFF1E0), shift)
+
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Brush.verticalGradient(listOf(top, middle, bottom)))
+    ) {
+        val w = maxWidth
+        val h = maxHeight
+        Blob(Color(0xFFFBE4B9), 260.dp, Modifier.offset(x = w * (0.45f + 0.15f * driftA), y = h * (-0.06f + 0.06f * driftB)))
+        Blob(Color(0xFFDDF4F8), 300.dp, Modifier.offset(x = w * (-0.35f + 0.12f * driftB), y = h * (0.35f + 0.08f * driftA)))
+        Blob(Color(0xFFD7F2DF), 200.dp, Modifier.offset(x = w * (0.6f - 0.12f * driftA), y = h * (0.78f - 0.06f * driftB)))
+    }
+}
+
+@Composable
+private fun Blob(color: Color, size: Dp, modifier: Modifier) {
+    Box(
+        modifier = modifier
+            .size(size)
+            .clip(CircleShape)
+            .background(Brush.radialGradient(listOf(color.copy(alpha = 0.55f), color.copy(alpha = 0f))))
+    )
+}
+
+/**
+ * Fades and slides its content up the first time it appears, steps after the screen opens.
+ * remembers which items already animated, so scrolling doesn't replay it.
+ */
+@Composable
+fun Entrance(index: Int, played: MutableSet<Int>, content: @Composable () -> Unit) {
+    val alreadyPlayed = index in played
+    val progress = remember { Animatable(if (alreadyPlayed) 1f else 0f) }
+    LaunchedEffect(Unit) {
+        if (!alreadyPlayed) {
+            played += index
+            delay(80L * index)
+            progress.animateTo(1f, tween(550, easing = FastOutSlowInEasing))
+        }
+    }
+    Box(
+        modifier = Modifier.graphicsLayer {
+            alpha = progress.value
+            translationY = (1f - progress.value) * 60f
+            val s = 0.94f + 0.06f * progress.value
+            scaleX = s
+            scaleY = s
+        }
+    ) { content() }
+}
+
+/** Shrinks slightly while pressed and springs back when released. */
+@Composable
+private fun Modifier.pressBounce(interactionSource: MutableInteractionSource): Modifier {
+    val pressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.95f else 1f,
+        animationSpec = spring(dampingRatio = 0.4f, stiffness = Spring.StiffnessMedium),
+        label = "press"
+    )
+    return this.scale(scale)
+}
+
+/** Counts up from 0 to [value] when the card first appears. */
+@Composable
+private fun countUp(value: Int, delayMillis: Int = 350): Int {
+    val shown by animateIntAsState(
+        targetValue = value,
+        animationSpec = tween(900, delayMillis = delayMillis, easing = FastOutSlowInEasing),
+        label = "countUp"
+    )
+    return shown
+}
+
+// =============================================================================================
+// Cards
+// =============================================================================================
 
 @Composable
 fun DashboardCard(
@@ -40,27 +168,50 @@ fun DashboardCard(
     title: String,
     modifier: Modifier = Modifier,
     onClick: () -> Unit = {},
+    iconModifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
     Card(
         modifier = modifier
             .fillMaxWidth()
             .aspectRatio(0.85f)
-            .clickable { onClick() },
+            .pressBounce(interactionSource)
+            .clickable(interactionSource = interactionSource, indication = LocalIndication.current) { onClick() },
         colors = CardDefaults.cardColors(containerColor = backgroundColor),
-        shape = RoundedCornerShape(24.dp)
+        shape = RoundedCornerShape(24.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxSize(),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            Icon(imageVector = icon, contentDescription = null, tint = Color.DarkGray)
-            Column {
-                content()
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(text = title, color = Color.Gray, fontSize = 14.sp)
+        Box(modifier = Modifier.fillMaxSize()) {
+            // Soft highlight in the corner for depth
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = 30.dp, y = (-30).dp)
+                    .size(110.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.25f))
+            )
+            Column(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .fillMaxSize(),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.55f))
+                ) {
+                    Icon(imageVector = icon, contentDescription = null, tint = Color.DarkGray, modifier = iconModifier)
+                }
+                Column {
+                    content()
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(text = title, color = Color.Gray, fontSize = 14.sp)
+                }
             }
         }
     }
@@ -68,25 +219,29 @@ fun DashboardCard(
 
 @Composable
 fun MoodWidgetCard(mood: MoodType?, onClick: () -> Unit) {
+    // The emoji gently floats
+    val float = rememberInfiniteTransition(label = "moodFloat")
+    val bob by float.animateFloat(-3f, 3f, infiniteRepeatable(tween(1600, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "bob")
     DashboardCard(
         backgroundColor = PastelBlue,
         icon = Icons.Default.Face,
         title = "Today's Mood",
         onClick = onClick
     ) {
-        if (mood != null) {
-            Text(mood.emoji, fontSize = 32.sp)
-            Text(mood.label, fontWeight = FontWeight.Bold, color = Color.DarkGray, fontSize = 18.sp)
-        } else {
-            Text("➕", fontSize = 32.sp)
-            Text("Log Mood", fontWeight = FontWeight.Bold, color = Color.DarkGray, fontSize = 18.sp)
-        }
+        Text(
+            mood?.emoji ?: "➕",
+            fontSize = 32.sp,
+            modifier = Modifier.graphicsLayer { translationY = bob * density }
+        )
+        Text(mood?.label ?: "Log Mood", fontWeight = FontWeight.Bold, color = Color.DarkGray, fontSize = 18.sp)
     }
 }
 
 @Composable
 fun GoalsWidgetCard(completedGoals: Int, totalGoals: Int, onClick: () -> Unit) {
-    val percentage = if (totalGoals > 0) ((completedGoals.toFloat() / totalGoals) * 100).toInt() else 0
+    val target = if (totalGoals > 0) completedGoals * 100 / totalGoals else 0
+    val percentage = countUp(target)
+    val progress by animateFloatAsState(target / 100f, tween(900, delayMillis = 350, easing = FastOutSlowInEasing), label = "goalsBar")
     DashboardCard(
         backgroundColor = PastelYellow,
         icon = Icons.Default.CheckCircle,
@@ -94,45 +249,157 @@ fun GoalsWidgetCard(completedGoals: Int, totalGoals: Int, onClick: () -> Unit) {
         onClick = onClick
     ) {
         Text("$percentage%", fontWeight = FontWeight.Bold, color = Color.DarkGray, fontSize = 24.sp)
-        Text("complete", color = Color.DarkGray, fontSize = 14.sp)
+        Text("$completedGoals of $totalGoals done", color = Color.DarkGray, fontSize = 14.sp)
+        Spacer(modifier = Modifier.height(6.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .clip(RoundedCornerShape(3.dp))
+                .background(Color.White.copy(alpha = 0.6f))
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth(progress)
+                    .background(Color.DarkGray.copy(alpha = 0.7f))
+            )
+        }
     }
 }
 
 /** Days in a row with at least one goal completed (from GoalsViewModel.streak). */
 @Composable
 fun StreakWidgetCard(days: Int, onClick: () -> Unit = {}) {
+    val shown = countUp(days)
+    // The flame flickers while a streak is going
+    val flicker = rememberInfiniteTransition(label = "flame")
+    val flame by flicker.animateFloat(0.92f, 1.1f, infiniteRepeatable(tween(450, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "flameScale")
     DashboardCard(
         backgroundColor = PastelOrange,
         icon = Icons.Default.LocalFireDepartment,
         title = "Goal Streak",
-        onClick = onClick
+        onClick = onClick,
+        iconModifier = if (days > 0) Modifier.scale(flame) else Modifier
     ) {
-        Text("$days", fontWeight = FontWeight.Bold, color = Color.DarkGray, fontSize = 24.sp)
+        Text("$shown", fontWeight = FontWeight.Bold, color = Color.DarkGray, fontSize = 24.sp)
         Text(if (days == 1) "day" else "days", color = Color.DarkGray, fontSize = 14.sp)
     }
 }
 
+/** Text shown on the Sleep and Water cards when Health Connect isn't linked yet. Returns true if it drew something. */
 @Composable
-fun SleepWidgetCard() {
+private fun HealthNotReady(status: HealthStatus): Boolean {
+    val (big, small) = when (status) {
+        HealthStatus.READY -> return false
+        HealthStatus.LOADING -> "—" to " "
+        HealthStatus.NEEDS_PERMISSION -> "Connect" to "Tap to link Health Connect"
+        HealthStatus.NEEDS_INSTALL -> "Set up" to "Install Health Connect"
+        HealthStatus.NOT_SUPPORTED -> "Unavailable" to "Not on this phone"
+    }
+    Text(big, fontWeight = FontWeight.Bold, color = Color.DarkGray, fontSize = 20.sp)
+    Text(small, color = Color.DarkGray, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    return true
+}
+
+/** Last night's sleep */
+@Composable
+fun SleepWidgetCard(status: HealthStatus, sleep: Duration?, onClick: () -> Unit) {
+    // The moon gently rocks
+    val rock = rememberInfiniteTransition(label = "moon")
+    val tilt by rock.animateFloat(-10f, 10f, infiniteRepeatable(tween(2200, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "tilt")
+    val hours = sleep?.toMinutes()?.div(60.0) ?: 0.0
+    val progress by animateFloatAsState(
+        (hours / HealthRepository.SLEEP_GOAL_HOURS).toFloat().coerceIn(0f, 1f),
+        tween(900, delayMillis = 350, easing = FastOutSlowInEasing),
+        label = "sleepBar"
+    )
     DashboardCard(
-        backgroundColor = PastelBlue,
+        backgroundColor = Color(0xFFE3E0F7),
         icon = Icons.Default.Bedtime,
-        title = "Sleep"
+        title = "Sleep",
+        onClick = onClick,
+        iconModifier = Modifier.rotate(tilt)
     ) {
-        Text("7.5h", fontWeight = FontWeight.Bold, color = Color.DarkGray, fontSize = 24.sp)
-        Text("last night", color = Color.DarkGray, fontSize = 14.sp)
+        if (!HealthNotReady(status)) {
+            if (sleep == null) {
+                Text("No data", fontWeight = FontWeight.Bold, color = Color.DarkGray, fontSize = 20.sp)
+                Text("for last night", color = Color.DarkGray, fontSize = 13.sp)
+            } else {
+                val minutes = countUp(sleep.toMinutes().toInt())
+                Text("${minutes / 60}h ${minutes % 60}m", fontWeight = FontWeight.Bold, color = Color.DarkGray, fontSize = 24.sp)
+                Text("last night", color = Color.DarkGray, fontSize = 14.sp)
+                Spacer(modifier = Modifier.height(6.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(Color.White.copy(alpha = 0.6f))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth(progress)
+                            .background(Color(0xFF5B5591).copy(alpha = 0.8f))
+                    )
+                }
+            }
+        }
     }
 }
 
+/** A water drop outline used for the filling droplet on the Water card. */
+private val DropletShape = GenericShape { size, _ ->
+    val w = size.width
+    val h = size.height
+    moveTo(w / 2f, 0f)
+    cubicTo(w / 2f, h * 0.25f, w, h * 0.45f, w, h * 0.68f)
+    cubicTo(w, h * 0.88f, w * 0.78f, h, w / 2f, h)
+    cubicTo(w * 0.22f, h, 0f, h * 0.88f, 0f, h * 0.68f)
+    cubicTo(0f, h * 0.45f, w / 2f, h * 0.25f, w / 2f, 0f)
+    close()
+}
+
+/** Today's water from Health Connect. */
 @Composable
-fun HydrationWidgetCard() {
+fun HydrationWidgetCard(status: HealthStatus, liters: Double, onClick: () -> Unit) {
+    val fill by animateFloatAsState(
+        (liters / HealthRepository.WATER_GOAL_LITERS).toFloat().coerceIn(0f, 1f),
+        tween(1200, delayMillis = 350, easing = FastOutSlowInEasing),
+        label = "waterFill"
+    )
+    // A small ripple on the water's surface
+    val wave = rememberInfiniteTransition(label = "wave")
+    val ripple by wave.animateFloat(-0.03f, 0.03f, infiniteRepeatable(tween(900, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "ripple")
     DashboardCard(
         backgroundColor = PastelCyan,
         icon = Icons.Default.WaterDrop,
-        title = "Hydration"
+        title = "Water",
+        onClick = onClick
     ) {
-        Text("6 / 8", fontWeight = FontWeight.Bold, color = Color.DarkGray, fontSize = 24.sp)
-        Text("glasses", color = Color.DarkGray, fontSize = 14.sp)
+        if (!HealthNotReady(status)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(String.format(Locale.US, "%.1f L", liters), fontWeight = FontWeight.Bold, color = Color.DarkGray, fontSize = 24.sp)
+                    Text(String.format(Locale.US, "of %.0f L", HealthRepository.WATER_GOAL_LITERS), color = Color.DarkGray, fontSize = 14.sp)
+                }
+                Box(
+                    contentAlignment = Alignment.BottomCenter,
+                    modifier = Modifier
+                        .size(width = 28.dp, height = 36.dp)
+                        .clip(DropletShape)
+                        .background(Color.White.copy(alpha = 0.6f))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .fillMaxHeight(if (fill > 0f) (fill + ripple).coerceIn(0.04f, 1f) else 0f)
+                            .background(Color(0xFF1F7A99))
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -145,32 +412,71 @@ fun InsightWidgetCard(
     accentColor: Color,
     onClick: () -> Unit
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val loop = rememberInfiniteTransition(label = "story")
+    // A soft light sweeps across the card, and the sparkle slowly turns
+    val sweep by loop.animateFloat(-0.4f, 1.4f, infiniteRepeatable(tween(3200, easing = LinearEasing), RepeatMode.Restart), label = "sweep")
+    val spin by loop.animateFloat(-12f, 12f, infiniteRepeatable(tween(1800, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "spin")
+    val pulse by loop.animateFloat(1f, 1.12f, infiniteRepeatable(tween(700, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "pulse")
+    val isCrisis = level == ConcernLevel.CRISIS
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClickLabel = "Open pattern insights") { onClick() },
+            .pressBounce(interactionSource)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = LocalIndication.current,
+                onClickLabel = "Open your weekly story"
+            ) { onClick() },
         colors = CardDefaults.cardColors(containerColor = backgroundColor),
-        shape = RoundedCornerShape(24.dp)
+        shape = RoundedCornerShape(24.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
     ) {
-        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.Top) {
-            Icon(
-                imageVector = if (level == ConcernLevel.CRISIS) Icons.Default.PhoneInTalk else Icons.Default.AutoAwesome,
-                contentDescription = null,
-                tint = accentColor
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text("Pattern Insights", color = Color.Gray, fontSize = 13.sp)
-                Text(title, fontWeight = FontWeight.Bold, color = accentColor, fontSize = 18.sp)
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(message, color = Color.DarkGray, fontSize = 14.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = if (level == ConcernLevel.CRISIS) "Tap for support options →" else "Tap to see your patterns →",
-                    color = accentColor,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            val widthPx = constraints.maxWidth.toFloat()
+            if (!isCrisis) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(Color.Transparent, Color.White.copy(alpha = 0.35f), Color.Transparent),
+                                start = Offset(widthPx * sweep - 220f, 0f),
+                                end = Offset(widthPx * sweep + 220f, 500f)
+                            )
+                        )
                 )
+            }
+            Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.Top) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.6f))
+                ) {
+                    Icon(
+                        imageVector = if (isCrisis) Icons.Default.PhoneInTalk else Icons.Default.AutoAwesome,
+                        contentDescription = null,
+                        tint = accentColor,
+                        modifier = if (isCrisis) Modifier.scale(pulse) else Modifier.rotate(spin)
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Your Weekly Story", color = Color.Gray, fontSize = 13.sp)
+                    Text(title, fontWeight = FontWeight.Bold, color = accentColor, fontSize = 18.sp)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(message, color = Color.DarkGray, fontSize = 14.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = if (isCrisis) "Tap for support options →" else "Tap to read your story →",
+                        color = accentColor,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
             }
         }
     }

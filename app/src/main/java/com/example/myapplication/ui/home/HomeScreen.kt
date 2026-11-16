@@ -1,8 +1,33 @@
 package com.example.myapplication.ui.home
 
 import android.os.Build
+import android.content.ActivityNotFoundException
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.compose.runtime.DisposableEffect
+import androidx.health.connect.client.PermissionController
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.example.myapplication.data.health.HealthRepository
+import com.example.myapplication.data.health.HealthStatus
+import com.example.myapplication.ui.health.HealthViewModel
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
+import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.delay
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -44,6 +69,7 @@ import com.example.myapplication.ui.insights.InsightsViewModel
 import com.example.myapplication.ui.insights.levelColors
 import com.example.myapplication.ui.insights.levelTitle
 
+import com.example.myapplication.data.ai.ConcernLevel
 import com.example.myapplication.ui.goals.GoalsViewModel
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -51,7 +77,8 @@ import com.example.myapplication.ui.goals.GoalsViewModel
 fun HomeScreen(
     navController: NavController,
     goalsViewModel: GoalsViewModel = viewModel(),
-    insightsViewModel: InsightsViewModel = viewModel()
+    insightsViewModel: InsightsViewModel = viewModel(),
+    healthViewModel: HealthViewModel = viewModel()
 ) {
     val context = LocalContext.current
     val passcodeManager = remember { PasscodeManager(context) }
@@ -77,6 +104,38 @@ fun HomeScreen(
     val insightReport by insightsViewModel.report.collectAsState()
     val insightLevel by insightsViewModel.displayLevel.collectAsState()
     val aiInsight by insightsViewModel.aiState.collectAsState()
+    val weeklyStory by insightsViewModel.story.collectAsState()
+
+    // Sleep and water from Health Connect (Samsung Health, Fitbit, Google Fit and others write there)
+    val health by healthViewModel.snapshot.collectAsState()
+    val healthPermissionLauncher = rememberLauncherForActivityResult(
+        PermissionController.createRequestPermissionResultContract()
+    ) { granted ->
+        if (!granted.containsAll(HealthRepository.PERMISSIONS)) {
+            Toast.makeText(context, "Mindful needs access to sleep and water to show these cards.", Toast.LENGTH_LONG).show()
+        }
+        healthViewModel.refresh()
+    }
+    val onHealthCardClick: () -> Unit = {
+        when (health.status) {
+            HealthStatus.NEEDS_PERMISSION -> healthPermissionLauncher.launch(HealthRepository.PERMISSIONS)
+            HealthStatus.NEEDS_INSTALL -> openHealthConnectInPlayStore(context)
+            else -> healthViewModel.refresh()
+        }
+    }
+    // Reload when the user comes back to the app (for example after logging water in Samsung Health)
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) healthViewModel.refresh()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    // The Weekly Story uses sleep to look for a sleep–mood link
+    LaunchedEffect(health.sleepByDate) {
+        insightsViewModel.updateSleep(health.sleepByDate)
+    }
 
     // Dynamic Quote
     val quote = remember {
@@ -93,217 +152,322 @@ fun HomeScreen(
     // Dynamic Greeting
     val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
     val greeting = when {
-        hour < 12 -> "Good morning \uD83D\uDC4B"
-        hour < 17 -> "Good afternoon \uD83D\uDC4B"
-        else -> "Good evening \uD83D\uDC4B"
+        hour < 12 -> "Good morning"
+        hour < 17 -> "Good afternoon"
+        else -> "Good evening"
+    }
+    val todayLabel = remember { LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, MMMM d")) }
+
+    // Cards cascade in when the screen opens; this remembers which ones already did
+    val played = remember { mutableSetOf<Int>() }
+
+    // The waving hand waves a couple of times when the screen opens
+    val wave = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        delay(400)
+        repeat(2) {
+            wave.animateTo(22f, tween(160))
+            wave.animateTo(-10f, tween(160))
+        }
+        wave.animateTo(0f, spring(dampingRatio = 0.5f))
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFFFFDF9)) // Very light warm background
-            .padding(horizontal = 24.dp)
-    ) {
-        Spacer(modifier = Modifier.height(48.dp))
+    Box(modifier = Modifier.fillMaxSize()) {
+        HomeBackground()
 
-        // Header Area
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 24.dp)
         ) {
-            Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
-                Text(
-                    text = greeting,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.DarkGray
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "\"$quote\"",
-                    fontStyle = FontStyle.Italic,
-                    color = Color.Gray,
-                    fontSize = 14.sp
-                )
+            Spacer(modifier = Modifier.height(48.dp))
+
+            // Header Area
+            Entrance(index = 0, played = played) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+                        Text(
+                            text = todayLabel.uppercase(),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            letterSpacing = 1.5.sp,
+                            color = Color.Gray
+                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = greeting,
+                                fontSize = 26.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF2B2B2B)
+                            )
+                            Text(
+                                text = " \uD83D\uDC4B",
+                                fontSize = 26.sp,
+                                modifier = Modifier.graphicsLayer {
+                                    rotationZ = wave.value
+                                    transformOrigin = TransformOrigin(0.7f, 0.9f)
+                                }
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "\"$quote\"",
+                            fontStyle = FontStyle.Italic,
+                            color = Color.Gray,
+                            fontSize = 14.sp
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF70DDF2)) // Cyan profile circle
+                            .clickable { showSecuritySettingsDialog = true },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.Person, contentDescription = "Profile & Security", tint = Color.DarkGray)
+                    }
+                }
             }
 
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF70DDF2)) // Cyan profile circle
-                    .clickable { showSecuritySettingsDialog = true },
-                contentAlignment = Alignment.Center
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Widgets Grid
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                contentPadding = PaddingValues(bottom = 24.dp)
             ) {
-                Icon(Icons.Default.Person, contentDescription = "Profile & Security", tint = Color.DarkGray)
+                // Full-width so warning signs are easy to notice on the home page
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Entrance(index = 1, played = played) {
+                        val (background, accent) = levelColors(insightLevel)
+                        val isCrisis = insightLevel == ConcernLevel.CRISIS
+                        InsightWidgetCard(
+                            level = insightLevel,
+                            // In a crisis, the card shows support first; otherwise it shows this week's story title
+                            title = if (isCrisis) levelTitle(insightLevel) else (aiInsight.insight?.summary ?: weeklyStory.title),
+                            message = if (isCrisis) insightReport.headline
+                            else "${weeklyStory.dateRange} · ${weeklyStory.daysLogged} of 7 days logged",
+                            backgroundColor = background,
+                            accentColor = accent,
+                            onClick = { navController.navigate("insights") }
+                        )
+                    }
+                }
+                item {
+                    Entrance(index = 2, played = played) {
+                        MoodWidgetCard(
+                            mood = todayMood,
+                            onClick = { navController.navigate("mood") }
+                        )
+                    }
+                }
+                item {
+                    Entrance(index = 3, played = played) {
+                        GoalsWidgetCard(
+                            completedGoals = goalsViewModel.completedGoals,
+                            totalGoals = goalsViewModel.goals.size,
+                            onClick = { navController.navigate("goals") }
+                        )
+                    }
+                }
+                item {
+                    Entrance(index = 4, played = played) {
+                        // Days in a row with at least one goal completed
+                        StreakWidgetCard(
+                            days = goalsViewModel.streak,
+                            onClick = { navController.navigate("goals") }
+                        )
+                    }
+                }
+                item {
+                    Entrance(index = 5, played = played) {
+                        SleepWidgetCard(
+                            status = health.status,
+                            sleep = health.sleepLastNight,
+                            onClick = onHealthCardClick
+                        )
+                    }
+                }
+                item {
+                    Entrance(index = 6, played = played) {
+                        HydrationWidgetCard(
+                            status = health.status,
+                            liters = health.waterTodayLiters,
+                            onClick = onHealthCardClick
+                        )
+                    }
+                }
+                item {
+                    Entrance(index = 7, played = played) {
+                        ResourceWidgetCard(
+                            onClick = { navController.navigate("resources") }
+                        )
+                    }
+                }
+                item {
+                    Entrance(index = 8, played = played) {
+                        JournalWidgetCard(
+                            onClick = { navController.navigate("journal") }
+                        )
+                    }
+                }
             }
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Widgets Grid
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(bottom = 24.dp)
-        ) {
-            // Full-width so warning signs are easy to notice on the home page
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                val (background, accent) = levelColors(insightLevel)
-                InsightWidgetCard(
-                    level = insightLevel,
-                    title = levelTitle(insightLevel),
-                    message = aiInsight.insight?.summary ?: insightReport.headline,
-                    backgroundColor = background,
-                    accentColor = accent,
-                    onClick = { navController.navigate("insights") }
-                )
-            }
-            item {
-                MoodWidgetCard(
-                    mood = todayMood,
-                    onClick = { navController.navigate("mood") }
-                )
-            }
-            item {
-                GoalsWidgetCard(
-                    completedGoals = goalsViewModel.completedGoals,
-                    totalGoals = goalsViewModel.goals.size,
-                    onClick = { navController.navigate("goals") }
-                )
-            }
-            item {
-                // Days in a row with at least one goal completed
-                StreakWidgetCard(
-                    days = goalsViewModel.streak,
-                    onClick = { navController.navigate("goals") }
-                )
-            }
-            item {
-                SleepWidgetCard() // temp card not sure what to do or what the intended look is here but good for not
-                // will be used in the demo and will talk with prof on what the best use of this screen should be
-                // maybe expanding the AI to take up almost two cards worth then having 4 under idk
-            }
-            item {
-                HydrationWidgetCard() // temp card not sure what we actually want to do here yet
-            }
-            item {
-                ResourceWidgetCard(
-                    onClick = { navController.navigate("resources") }
-                )
-            }
-            item {
-                JournalWidgetCard(
-                    onClick = { navController.navigate("journal") }
-                )
-            }
-        }
     }
 
     if (showOptInDialog) {
-        AlertDialog(
-            onDismissRequest = {
+        ThemedDialog(
+            icon = Icons.Default.Lock,
+            title = "Protect your privacy",
+            message = "Set up a 4-digit passcode to keep your journal and reflections private. You can change this anytime from the profile button.",
+            primaryLabel = "Set up passcode",
+            onPrimary = {
+                passcodeManager.setPromptedOnboarding(true)
+                showOptInDialog = false
+                navController.navigate("passcode_setup")
+            },
+            secondaryLabel = "Not now",
+            onSecondary = {
                 passcodeManager.setPromptedOnboarding(true)
                 showOptInDialog = false
             },
-            icon = {
-                Icon(Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-            },
-            title = {
-                Text("Protect Your Privacy", fontWeight = FontWeight.Bold)
-            },
-            text = {
-                Text(
-                    "Would you like to set up a 4-digit passcode to lock your journal entries and personal reflections?",
-                    fontSize = 14.sp,
-                    color = Color.DarkGray
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        passcodeManager.setPromptedOnboarding(true)
-                        showOptInDialog = false
-                        navController.navigate("passcode_setup")
-                    }
-                ) {
-                    Text("Set Up Passcode")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        passcodeManager.setPromptedOnboarding(true)
-                        showOptInDialog = false
-                    }
-                ) {
-                    Text("Skip for Now")
-                }
+            onDismiss = {
+                passcodeManager.setPromptedOnboarding(true)
+                showOptInDialog = false
             }
         )
     }
 
     if (showSecuritySettingsDialog) {
         var isEnabled by remember { mutableStateOf(passcodeManager.isPasscodeEnabled()) }
-        AlertDialog(
-            onDismissRequest = { showSecuritySettingsDialog = false },
-            icon = {
-                Icon(Icons.Default.Security, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-            },
-            title = {
-                Text("Security & Passcode", fontWeight = FontWeight.Bold)
-            },
-            text = {
-                Column {
-                    Text(
-                        text = if (isEnabled) "Passcode lock is ACTIVE" else "Passcode lock is DISABLED",
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (isEnabled) Color(0xFF2E7D32) else Color.Gray,
-                        fontSize = 15.sp
+        ThemedDialog(
+            icon = Icons.Default.Security,
+            title = "Security & passcode",
+            status = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(if (isEnabled) Color(0xFFD7F2DF) else Color(0xFFF7F3EE))
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(if (isEnabled) Color(0xFF1E6B3A) else Color(0xFFA8A29E))
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = if (isEnabled)
-                            "Your app requires a 4-digit PIN upon opening."
-                        else
-                            "Add a 4-digit PIN and recovery question to protect your journal.",
+                        if (isEnabled) "  Passcode lock is on" else "  Passcode lock is off",
                         fontSize = 13.sp,
-                        color = Color.DarkGray
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (isEnabled) Color(0xFF1E6B3A) else Color(0xFF6B6B6B)
                     )
                 }
             },
-            confirmButton = {
-                if (!isEnabled) {
-                    Button(onClick = {
-                        showSecuritySettingsDialog = false
-                        navController.navigate("passcode_setup")
-                    }) {
-                        Text("Enable Passcode")
-                    }
+            message = if (isEnabled) "Mindful asks for your 4-digit PIN every time it opens."
+            else "Add a 4-digit PIN and a recovery question to keep your journal private.",
+            primaryLabel = if (isEnabled) "Change PIN" else "Turn on passcode",
+            onPrimary = {
+                showSecuritySettingsDialog = false
+                navController.navigate("passcode_setup")
+            },
+            secondaryLabel = if (isEnabled) "Turn off" else "Close",
+            secondaryIsDestructive = isEnabled,
+            onSecondary = {
+                if (isEnabled) {
+                    passcodeManager.disablePasscode()
+                    isEnabled = false
                 } else {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = {
-                            passcodeManager.disablePasscode()
-                            isEnabled = false
-                        }) {
-                            Text("Turn Off")
-                        }
-                        Button(onClick = {
-                            showSecuritySettingsDialog = false
-                            navController.navigate("passcode_setup")
-                        }) {
-                            Text("Change PIN")
-                        }
-                    }
+                    showSecuritySettingsDialog = false
                 }
             },
-            dismissButton = {
-                TextButton(onClick = { showSecuritySettingsDialog = false }) {
-                    Text("Close")
-                }
+            onDismiss = { showSecuritySettingsDialog = false }
+        )
+    }
+}
+
+/** A popup styled like the rest of the app: cream background, icon badge, charcoal buttons. */
+@Composable
+private fun ThemedDialog(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    message: String,
+    primaryLabel: String,
+    onPrimary: () -> Unit,
+    secondaryLabel: String,
+    onSecondary: () -> Unit,
+    onDismiss: () -> Unit,
+    secondaryIsDestructive: Boolean = false,
+    status: (@Composable () -> Unit)? = null
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Color(0xFFFFFDF9),
+        shape = RoundedCornerShape(28.dp),
+        icon = {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(Color(0xFFDDF4F8))
+            ) {
+                Icon(icon, contentDescription = null, tint = Color(0xFF2B2B2B))
             }
+        },
+        title = {
+            Text(title, fontWeight = FontWeight.Bold, color = Color(0xFF2B2B2B), textAlign = TextAlign.Center)
+        },
+        text = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                status?.let {
+                    it()
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+                Text(message, fontSize = 14.sp, lineHeight = 20.sp, color = Color(0xFF6B6B6B), textAlign = TextAlign.Center)
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onPrimary,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2B2B2B), contentColor = Color.White),
+                shape = RoundedCornerShape(14.dp)
+            ) { Text(primaryLabel, fontWeight = FontWeight.SemiBold) }
+        },
+        dismissButton = {
+            OutlinedButton(
+                onClick = onSecondary,
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = if (secondaryIsDestructive) Color(0xFFB3261E) else Color(0xFF2B2B2B)
+                ),
+                border = BorderStroke(1.dp, Color(0xFFECE7E1)),
+                shape = RoundedCornerShape(14.dp)
+            ) { Text(secondaryLabel, fontWeight = FontWeight.SemiBold) }
+        }
+    )
+}
+
+/** Opens Health Connect's Play Store page (needed on Android 13 and older). */
+private fun openHealthConnectInPlayStore(context: Context) {
+    val market = Intent(
+        Intent.ACTION_VIEW,
+        Uri.parse("market://details?id=${HealthRepository.HEALTH_CONNECT_PACKAGE}&url=healthconnect%3A%2F%2Fonboarding")
+    ).setPackage("com.android.vending")
+    try {
+        context.startActivity(market)
+    } catch (e: ActivityNotFoundException) {
+        context.startActivity(
+            Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=${HealthRepository.HEALTH_CONNECT_PACKAGE}"))
         )
     }
 }
