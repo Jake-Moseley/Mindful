@@ -2,50 +2,66 @@
 Mental Health Companion App
 
 ## Overview
-Mindful is an **Android** application with the goal of improving the user's daily life by tracking mood, personal goals, and journal entries. Mindful changes up the game by adding gamified mechanics to keep users coming back, while also inlcuding community features.
+Mindful is an **Android** application that helps users improve their daily well-being by tracking their mood, goals, and journal entries. Version 2.0 adds **Pattern Insights**, which looks at the user's moods, journal entries, and goals to spot patterns and suggest small, practical steps. Mindful is a self-care tool, not a replacement for professional care.
 
 ## Features
 ### Mood Tracker
-- Log your daily mood with the interactable calendar.
-- Track your mood by viewing previous days/months.
+- Log your daily mood with the interactive calendar.
+- Update today's mood if it changes.
+- Review your moods from previous days and months.
 
-### Journal Entry
-- Keep track of your thoughts by creating journal entries.
+### Journal
+- Write a daily journal entry that saves automatically.
+- Mark an entry complete when you're finished.
+- Read your past entries at any time.
 
 ### Daily Goals
-- Set custom goals that fit your needs.
-- Complete preset goals that the app suggests.
+- Complete daily goals and track your progress.
+- See your progress on the home screen.
 
-### Community Forum
-- Chat and respond to other community members about commonalities.
+### Pattern Insights (AI)
+- Spots mood trends, such as tough weeks, changes from last week and moods that repeat on certain days.
+- Suggests self-care steps based on your patterns.
+- Optional AI-written summaries from Google Gemini, sent only with your permission.
+- Shows crisis resources (988 Suicide & Crisis Lifeline) if your journal contains concerning language.
+- All insights are labeled as non-clinical guidance, never a diagnosis.
 
-### Virtual Pet
-- Take care and level up your pet by using different app features.
-
-### Resource List
-- View resources for mental health professionals and other related resources.
+### Professional Resources
+- Browse and search mental health professionals and their contact information.
 
 ### Daily Quotes
-- View an inspirational daily quote to keep you going.
+- Get an inspirational quote each day on the home screen.
 
 ## Technology Used
-- **Language**: Kotlin
-- **UI**: Jetpack Compose (Android)
-- **Tools**: Android Studio (Recommended) or IntelliJ
+- **Language:** Kotlin
+- **UI:** Jetpack Compose with Material 3
+- **Architecture:** MVVM
+- **Local Database:** Room (SQLite)
+- **AI:** Google Gemini through Firebase AI Logic, plus on-device pattern analysis
+- **Security:** Firebase App Check
+- **Tools:** Android Studio, Gradle (Kotlin DSL), JUnit
 
 ## Installation and Setup
-- Android Studio and Android SDK
-- Configured Android emulator (Pixel 10 Pro Recommended)
+### Requirements
+- Android Studio
+- Android SDK (minimum Android 8.0 / API 26, targets API 36)
+- An Android emulator (Pixel 10 Pro recommended)
 
-## Steps to Run the Application
-- Clone the repository to Android Studio
-- Sync the project with Gradle
-- Open Device Manager
-- Start the emulator
-- Run the application
+### Steps to Run the Application
+1. Clone the repository and open it in Android Studio.
+2. Sync the project with Gradle.
+3. Open **Device Manager** and start the emulator.
+4. Run the application.
+
+The app runs without any extra setup. Pattern Insights uses on-device analysis until Firebase is configured.
+
+### Optional: Enable Gemini AI Insights
+1. Create a Firebase project and add an Android app with the package name `com.example.myapplication`.
+2. In the Firebase console, go to **AI Services → AI Logic** and enable the **Gemini Developer API**.
+3. Download `google-services.json` and place it in the `app/` folder. It is git-ignored, so don't commit it.
+4. Run the app, find the App Check debug token in Logcat (search `DebugAppCheckProvider`), and add it in the Firebase console under **Security → App Check → Apps → Manage debug tokens**.
 
 ## Contributors
-
-- [Jake Moseley](https://github.com/Jake-Moseley) - Mood Tracker, Daily Goals, and project documentation.
-- [Alex DeWolf](https://github.com/Silencieuxx) – Journal Entries and Resource List
-- [Kallen Schulz](https://github.com/Kallen1234) – Project setup, UI/UX layout, daily quotes feature, and account login functionality.
+- [Jake Moseley](https://github.com/Jake-Moseley) – Mood Tracker, Daily Goals, Pattern Insights (AI), and project documentation
+- [Alex DeWolf](https://github.com/Silencieuxx) – Journal and Professional Resources
+- [Kallen Schulz](https://github.com/Kallen1234) – Project setup, UI/UX layout, Home Page and Daily Quotes

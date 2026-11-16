@@ -3,6 +3,7 @@ package com.example.myapplication.data.ai
 import com.example.myapplication.data.model.Goal
 import com.example.myapplication.data.model.JournalEntry
 import com.example.myapplication.data.model.MoodEntry
+import com.example.myapplication.ui.mood.MoodCategory
 import com.example.myapplication.ui.mood.MoodType
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -40,8 +41,9 @@ data class PatternReport(
 // On-device analysis, works entirely offline
 object PatternAnalyzer {
 
-    // Moods that lean negative. Tired is included because long runs of it are worth noticing.
-    val NEGATIVE_MOODS = setOf(MoodType.SAD, MoodType.FRUSTRATED, MoodType.TIRED)
+    // Moods that lean negative: every mood in the Difficult category.
+    // Tired and Sick are included because long runs of them are worth noticing.
+    val NEGATIVE_MOODS: Set<MoodType> = MoodType.inCategory(MoodCategory.DIFFICULT).toSet()
 
     // Phrases that indicate possible self-harm or severe distress
     val HIGH_RISK_PHRASES = listOf(
@@ -49,7 +51,7 @@ object PatternAnalyzer {
         "want to die", "wanna die", "wish i was dead", "wish i were dead", "better off dead",
         "better off without me", "no reason to live", "nothing to live for", "self harm",
         "self-harm", "hurt myself", "hurting myself", "cut myself", "cutting myself",
-        "can't go on", "cant go on", "don't want to be here anymore", "dont want to be here anymore"
+        "can't go on", "cant go on", "don't want to be here anymore", "scratch myself", "harm", "dont want to be here anymore"
     )
 
     // Words that suggest deeper distress than a normal bad day
@@ -258,13 +260,21 @@ object PatternAnalyzer {
                     list += "Try a consistent bedtime and put screens away 30 minutes before sleep."
                     list += "A 10-minute walk outside can help boost your energy."
                 }
-                MoodType.SAD -> {
+                MoodType.SAD, MoodType.LONELY -> {
                     list += "Reach out to someone you trust. Even a short message counts."
                     list += "Write down three small things that went okay today."
                 }
-                MoodType.FRUSTRATED -> {
+                MoodType.FRUSTRATED, MoodType.ANGRY -> {
                     list += "Try box breathing: breathe in for 4 seconds, hold for 4, out for 4, hold for 4."
                     list += "Take a short break away from whatever is frustrating you."
+                }
+                MoodType.ANXIOUS, MoodType.STRESSED, MoodType.OVERWHELMED -> {
+                    list += "Try box breathing: breathe in for 4 seconds, hold for 4, out for 4, hold for 4."
+                    list += "Break one big task into a small first step you can finish today."
+                }
+                MoodType.SICK -> {
+                    list += "Give yourself permission to rest. Recovery comes first."
+                    list += "Drink water regularly, and check in with a doctor if you don't feel better."
                 }
                 else -> Unit
             }
