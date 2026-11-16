@@ -51,7 +51,7 @@ object PatternAnalyzer {
         "want to die", "wanna die", "wish i was dead", "wish i were dead", "better off dead",
         "better off without me", "no reason to live", "nothing to live for", "self harm",
         "self-harm", "hurt myself", "hurting myself", "cut myself", "cutting myself",
-        "can't go on", "cant go on", "don't want to be here anymore", "dont want to be here anymore"
+        "can't go on", "cant go on", "don't want to be here anymore", "scratch myself", "harm", "dont want to be here anymore"
     )
 
     // Words that suggest deeper distress than a normal bad day

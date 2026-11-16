@@ -28,11 +28,22 @@ import androidx.compose.ui.unit.sp
 import com.example.myapplication.data.local.AppDB
 import com.example.myapplication.data.model.JournalEntry
 import com.example.myapplication.data.model.MoodEntry
+import com.example.myapplication.data.model.GoalCompletion
+import com.example.myapplication.data.repository.GoalRepository
+import com.example.myapplication.ui.mood.MoodCategory
 import com.example.myapplication.ui.mood.MoodType
+import com.example.myapplication.ui.mood.MoodType.ANXIOUS
+import com.example.myapplication.ui.mood.MoodType.CALM
+import com.example.myapplication.ui.mood.MoodType.EXCITED
 import com.example.myapplication.ui.mood.MoodType.FRUSTRATED
+import com.example.myapplication.ui.mood.MoodType.GRATEFUL
 import com.example.myapplication.ui.mood.MoodType.HAPPY
+import com.example.myapplication.ui.mood.MoodType.OKAY
+import com.example.myapplication.ui.mood.MoodType.OVERWHELMED
 import com.example.myapplication.ui.mood.MoodType.SAD
+import com.example.myapplication.ui.mood.MoodType.STRESSED
 import com.example.myapplication.ui.mood.MoodType.TIRED
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -44,29 +55,45 @@ import java.time.LocalDate
  * To remove it, delete this file and the one line that calls InsightsTestTools() in InsightsScreen.kt.
  */
 
-/** A ready-made month of data. Each one is designed to trigger a different result. */
+/** A ready-made month of data. Each one is designed to tell a different Weekly Story. */
 enum class TestScenario(val label: String, val expected: String) {
-    STEADY("Steady month", "Green \"Looking steady\""),
-    MONDAY_BLUES("Tired on Mondays", "Steady, plus a weekday pattern"),
-    TOUGH_WEEK("Tough week", "Yellow \"A few tougher days\""),
-    ELEVATED("Rough two weeks", "Orange \"Worth checking in\""),
+    STEADY("Steady month", "\"A bright, steady week\" with goal and friends bright spots"),
+    MONDAY_BLUES("Tired on Mondays", "\"Mondays tend to be harder\" in What weighed on you"),
+    TOUGH_WEEK("Tough week at work", "Work on hard days, goals lifting your mood, a falling week"),
+    ELEVATED("Rough two weeks", "Orange check-in with a \"Find a professional\" nudge"),
     CRISIS("Crisis journal entry", "Red crisis card with 988")
 }
 
-/** Replaces ALL moods and journal entries with the chosen scenario. */
+private val HARD_DAY_ENTRIES = listOf(
+    "Work was a lot today. The deadline has me stressed and I couldn't switch off.",
+    "Another long meeting at work. I'm exhausted and didn't sleep well.",
+    "Couldn't focus at work, felt anxious most of the afternoon."
+)
+private val GOOD_DAY_ENTRIES = listOf(
+    "Went for a walk after dinner and felt calm.",
+    "Saw friends tonight and laughed a lot. Really needed that.",
+    "Got outside in the sun for a while. Good, relaxed day."
+)
+
+/** Replaces ALL moods, journal entries and goal history with the chosen scenario. */
 suspend fun loadTestScenario(db: AppDB, scenario: TestScenario, today: LocalDate = LocalDate.now()) {
     val moodDao = db.moodDAO()
     val journalDao = db.journalDAO()
+    val goalDao = db.goalDAO()
     moodDao.deleteAll()
     journalDao.deleteAll()
+    goalDao.deleteAllCompletions()
 
     // moods[0] = today, moods[1] = yesterday, and so on
     val moods: List<MoodType> = when (scenario) {
-        TestScenario.STEADY -> List(21) { i -> if (i % 7 == 3) TIRED else HAPPY }
+        TestScenario.STEADY -> List(21) { i -> listOf(HAPPY, CALM, GRATEFUL, TIRED, HAPPY, EXCITED, CALM)[i % 7] }
         TestScenario.MONDAY_BLUES -> List(28) { i ->
-            if (today.minusDays(i.toLong()).dayOfWeek == DayOfWeek.MONDAY) TIRED else HAPPY
+            if (today.minusDays(i.toLong()).dayOfWeek == DayOfWeek.MONDAY) TIRED
+            else listOf(HAPPY, CALM, OKAY, GRATEFUL)[i % 4]
         }
-        TestScenario.TOUGH_WEEK -> listOf(SAD, TIRED, FRUSTRATED, HAPPY, SAD, TIRED, HAPPY) + List(14) { HAPPY }
+        TestScenario.TOUGH_WEEK ->
+            listOf(STRESSED, TIRED, ANXIOUS, CALM, OVERWHELMED, HAPPY, HAPPY) +
+                    List(14) { i -> listOf(HAPPY, CALM, STRESSED, GRATEFUL, HAPPY, TIRED, CALM)[i % 7] }
         TestScenario.ELEVATED -> listOf(SAD, SAD, TIRED, SAD, FRUSTRATED, SAD, TIRED, SAD, HAPPY, SAD, TIRED, SAD, SAD, HAPPY)
         TestScenario.CRISIS -> listOf(SAD, SAD, TIRED, HAPPY, SAD, HAPPY, HAPPY)
     }
@@ -74,30 +101,42 @@ suspend fun loadTestScenario(db: AppDB, scenario: TestScenario, today: LocalDate
         moodDao.insertMood(MoodEntry(date = today.minusDays(daysAgo.toLong()).toString(), mood = mood.ordinal))
     }
 
-    // journals: days ago -> text
+    // Journal entries: days ago -> text. Most scenarios write on 2 of every 3 days, matching the day's mood.
     val journals: List<Pair<Long, String>> = when (scenario) {
-        TestScenario.STEADY, TestScenario.MONDAY_BLUES -> listOf(
-            1L to "Good day. Went for a walk and felt calm and relaxed afterwards.",
-            4L to "Grateful for dinner with friends tonight. Feeling happy."
-        )
-        TestScenario.TOUGH_WEEK -> listOf(
-            1L to "Work has me stressed and anxious. Felt overwhelmed most of the day.",
-            3L to "Tired and stressed again. Hard to focus.",
-            6L to "Pretty good day overall."
-        )
         TestScenario.ELEVATED -> listOf(
             1L to "Feeling hopeless about everything lately. Exhausted and lonely.",
-            3L to "Another bad day. I feel worthless and empty.",
+            3L to "Another bad day at work. I feel worthless and empty.",
             6L to "Couldn't get out of bed. Everything feels hopeless."
         )
         TestScenario.CRISIS -> listOf(
             1L to "I don't know how much longer I can do this. Some days I feel like I want to die."
         )
+        TestScenario.MONDAY_BLUES -> moods.mapIndexedNotNull { i, mood ->
+            when {
+                mood == TIRED -> i.toLong() to "Monday again. Back to work and I slept badly, so tired."
+                i % 3 != 2 -> i.toLong() to GOOD_DAY_ENTRIES[i % GOOD_DAY_ENTRIES.size]
+                else -> null
+            }
+        }
+        else -> moods.mapIndexedNotNull { i, mood ->
+            if (i % 3 == 2 || mood.category == MoodCategory.NEUTRAL) null
+            else i.toLong() to (if (mood.category == MoodCategory.DIFFICULT) HARD_DAY_ENTRIES else GOOD_DAY_ENTRIES)[i % 3]
+        }
     }
     journals.forEach { (daysAgo, text) ->
         journalDao.insertEntry(
-            JournalEntry(date = today.minusDays(daysAgo).toString(), content = text, complete = true)
+            JournalEntry(date = today.minusDays(daysAgo).toString(), content = text, complete = daysAgo > 0)
         )
+    }
+
+    // Goal history: goals were completed on good days, so the story can connect goals and mood
+    val goalRepository = GoalRepository(goalDao)
+    goalRepository.addStarterGoalsIfNeeded(today)
+    val goalId = goalDao.getActiveGoals().first().firstOrNull()?.id ?: return
+    moods.forEachIndexed { daysAgo, mood ->
+        if (mood.category == MoodCategory.POSITIVE && scenario != TestScenario.CRISIS) {
+            goalDao.insertCompletion(GoalCompletion(goalId, today.minusDays(daysAgo.toLong()).toString()))
+        }
     }
 }
 
@@ -115,6 +154,7 @@ suspend fun saveTestJournal(db: AppDB, text: String, today: LocalDate = LocalDat
 suspend fun clearTestData(db: AppDB) {
     db.moodDAO().deleteAll()
     db.journalDAO().deleteAll()
+    db.goalDAO().deleteAllCompletions()
 }
 
 /** The testing panel shown at the bottom of the Insights screen in debug builds. */
@@ -136,7 +176,7 @@ fun InsightsTestTools() {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Testing tools (debug builds only)", fontWeight = FontWeight.Bold, color = Color.DarkGray)
             Text(
-                "Loading a scenario replaces ALL mood and journal data.",
+                "Loading a scenario replaces ALL moods, journal entries and goal history.",
                 fontSize = 12.sp,
                 color = Color.Gray
             )
@@ -181,10 +221,10 @@ fun InsightsTestTools() {
                 onClick = {
                     scope.launch {
                         clearTestData(db)
-                        status = "Cleared all moods and journal entries."
+                        status = "Cleared moods, journal entries and goal history."
                     }
                 }
-            ) { Text("Clear all moods and journal entries") }
+            ) { Text("Clear moods, journal entries and goal history") }
 
             status?.let { Text(it, fontSize = 12.sp, color = Color.Gray) }
         }

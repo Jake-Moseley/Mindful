@@ -1,20 +1,30 @@
 package com.example.myapplication.ui.security
 
-import androidx.compose.animation.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockReset
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -22,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.myapplication.data.security.PasscodeManager
+import com.example.myapplication.ui.home.components.HomeBackground
 
 enum class PasscodeMode {
     UNLOCK,
@@ -77,6 +88,168 @@ fun PasscodeScreen(
     }
 }
 
+// =============================================================================================
+// Shared layout
+// =============================================================================================
+
+/** Background shared by every passcode screen: the same gentle animated backdrop as the home screen. */
+@Composable
+private fun PasscodeBackground(content: @Composable () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(PasscodeColors.Background)
+    ) {
+        HomeBackground()
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+        ) { content() }
+    }
+}
+
+/** Round icon badge at the top of each screen. */
+@Composable
+private fun IconBadge(icon: ImageVector) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(76.dp)
+            .clip(CircleShape)
+            .background(Color.White.copy(alpha = 0.85f))
+            .border(2.dp, PasscodeColors.Accent.copy(alpha = 0.6f), CircleShape)
+    ) {
+        Icon(icon, contentDescription = null, tint = PasscodeColors.Ink, modifier = Modifier.size(34.dp))
+    }
+}
+
+/** "Step 2 of 3" with a small progress bar, used during setup. */
+@Composable
+private fun StepIndicator(step: Int, total: Int) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            "STEP $step OF $total",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.5.sp,
+            color = PasscodeColors.TextMuted
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 8.dp)) {
+            repeat(total) { i ->
+                val color by animateColorAsState(
+                    if (i < step) PasscodeColors.Ink else PasscodeColors.Ink.copy(alpha = 0.12f),
+                    label = "step$i"
+                )
+                Box(
+                    modifier = Modifier
+                        .width(28.dp)
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(color)
+                )
+            }
+        }
+    }
+}
+
+/** The layout for every "enter a PIN" screen: header, dots, error message, keypad and an optional footer. */
+@Composable
+private fun PinEntryLayout(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    pinLength: Int,
+    isError: Boolean,
+    errorMessage: String,
+    onDigit: (String) -> Unit,
+    onDelete: () -> Unit,
+    onClear: () -> Unit,
+    step: Pair<Int, Int>? = null,
+    footer: @Composable () -> Unit = {}
+) {
+    PasscodeBackground {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 24.dp, vertical = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Spacer(modifier = Modifier.height(24.dp))
+                if (step != null) {
+                    StepIndicator(step.first, step.second)
+                    Spacer(modifier = Modifier.height(20.dp))
+                }
+                IconBadge(icon)
+                Spacer(modifier = Modifier.height(18.dp))
+                Text(
+                    text = title,
+                    fontSize = 26.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = PasscodeColors.TextPrimary,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = subtitle,
+                    fontSize = 15.sp,
+                    color = PasscodeColors.TextSecondary,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                PasscodePinDots(pinLength = pinLength, maxDigits = 4, isError = isError)
+                Box(modifier = Modifier.height(22.dp), contentAlignment = Alignment.Center) {
+                    ErrorMessage(visible = isError && errorMessage.isNotEmpty(), text = errorMessage)
+                }
+            }
+
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                PasscodeKeypad(onDigitClick = onDigit, onDeleteClick = onDelete, onClearClick = onClear)
+                Spacer(modifier = Modifier.height(12.dp))
+                footer()
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
+    }
+}
+
+/** Fades the error message in and out. Kept as its own function so AnimatedVisibility isn't tied to a layout scope. */
+@Composable
+private fun ErrorMessage(visible: Boolean, text: String) {
+    AnimatedVisibility(visible = visible, enter = fadeIn(), exit = fadeOut()) {
+        Text(
+            text = text,
+            color = PasscodeColors.Error,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+@Composable
+private fun themedFieldColors() = OutlinedTextFieldDefaults.colors(
+    focusedContainerColor = Color.White,
+    unfocusedContainerColor = Color.White,
+    focusedBorderColor = PasscodeColors.TextPrimary,
+    unfocusedBorderColor = PasscodeColors.Divider,
+    focusedLabelColor = PasscodeColors.TextPrimary,
+    unfocusedLabelColor = PasscodeColors.TextSecondary,
+    cursorColor = PasscodeColors.TextPrimary,
+    errorBorderColor = PasscodeColors.Error,
+    errorLabelColor = PasscodeColors.Error,
+    selectionColors = TextSelectionColors(
+        handleColor = PasscodeColors.TextPrimary,
+        backgroundColor = PasscodeColors.TextPrimary.copy(alpha = 0.2f)
+    )
+)
+
+// =============================================================================================
+// Unlock
+// =============================================================================================
+
 @Composable
 private fun UnlockContent(
     passcodeManager: PasscodeManager,
@@ -96,103 +269,51 @@ private fun UnlockContent(
         return
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFFFFDF9))
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.SpaceBetween
-    ) {
-        Spacer(modifier = Modifier.height(32.dp))
-
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(
-                imageVector = Icons.Default.Lock,
-                contentDescription = "Lock",
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(56.dp)
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "Welcome to Mindful",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.DarkGray
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Enter your 4-digit passcode",
-                fontSize = 15.sp,
-                color = Color.Gray
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            PasscodePinDots(
-                pinLength = enteredPin.length,
-                maxDigits = 4,
-                isError = isError
-            )
-
-            if (isError && errorMessage.isNotEmpty()) {
-                Text(
-                    text = errorMessage,
-                    color = MaterialTheme.colorScheme.error,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium
-                )
-            } else {
-                Spacer(modifier = Modifier.height(20.dp))
-            }
-        }
-
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            PasscodeKeypad(
-                onDigitClick = { digit ->
-                    if (enteredPin.length < 4) {
-                        isError = false
-                        errorMessage = ""
-                        val updated = enteredPin + digit
-                        enteredPin = updated
-                        if (updated.length == 4) {
-                            if (passcodeManager.verifyPasscode(updated)) {
-                                onUnlockSuccess()
-                            } else {
-                                isError = true
-                                errorMessage = "Incorrect passcode. Try again."
-                                enteredPin = ""
-                            }
-                        }
+    PinEntryLayout(
+        icon = Icons.Default.Lock,
+        title = "Welcome back",
+        subtitle = "Enter your 4-digit passcode",
+        pinLength = enteredPin.length,
+        isError = isError,
+        errorMessage = errorMessage,
+        onDigit = { digit ->
+            if (enteredPin.length < 4) {
+                isError = false
+                errorMessage = ""
+                val updated = enteredPin + digit
+                enteredPin = updated
+                if (updated.length == 4) {
+                    if (passcodeManager.verifyPasscode(updated)) {
+                        onUnlockSuccess()
+                    } else {
+                        isError = true
+                        errorMessage = "Incorrect passcode. Try again."
+                        enteredPin = ""
                     }
-                },
-                onDeleteClick = {
-                    if (enteredPin.isNotEmpty()) {
-                        isError = false
-                        errorMessage = ""
-                        enteredPin = enteredPin.dropLast(1)
-                    }
-                },
-                onClearClick = {
-                    enteredPin = ""
-                    isError = false
-                    errorMessage = ""
                 }
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            TextButton(onClick = { showForgotDialog = true }) {
-                Text(
-                    text = "Forgot Passcode?",
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold
-                )
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
+        },
+        onDelete = {
+            if (enteredPin.isNotEmpty()) {
+                isError = false
+                errorMessage = ""
+                enteredPin = enteredPin.dropLast(1)
+            }
+        },
+        onClear = {
+            enteredPin = ""
+            isError = false
+            errorMessage = ""
+        },
+        footer = {
+            TextButton(
+                onClick = { showForgotDialog = true },
+                colors = ButtonDefaults.textButtonColors(contentColor = PasscodeColors.TextPrimary)
+            ) {
+                Text("Forgot passcode?", fontWeight = FontWeight.SemiBold)
+            }
         }
-    }
+    )
 
     if (showForgotDialog) {
         SecurityQuestionResetDialog(
@@ -205,6 +326,10 @@ private fun UnlockContent(
         )
     }
 }
+
+// =============================================================================================
+// Setup
+// =============================================================================================
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -228,237 +353,223 @@ private fun SetupContent(
 
     when (step) {
         1 -> {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color(0xFFFFFDF9))
-                    .padding(24.dp)
-                    .verticalScroll(rememberScrollState()),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Spacer(modifier = Modifier.height(32.dp))
-
-                Icon(
-                    imageVector = Icons.Default.Security,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(56.dp)
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text(
-                    text = "Step 1 of 2: Recovery Question",
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.DarkGray
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "If you ever forget your passcode, this question will allow you to reset it.",
-                    fontSize = 14.sp,
-                    color = Color.Gray,
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                ExposedDropdownMenuBox(
-                    expanded = questionDropdownExpanded,
-                    onExpandedChange = { questionDropdownExpanded = it }
+            PasscodeBackground {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .imePadding()
+                        .padding(horizontal = 24.dp, vertical = 16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    OutlinedTextField(
-                        value = selectedQuestion,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Security Question") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = questionDropdownExpanded) },
+                    Spacer(modifier = Modifier.height(24.dp))
+                    StepIndicator(1, 3)
+                    Spacer(modifier = Modifier.height(20.dp))
+                    IconBadge(Icons.Default.Security)
+                    Spacer(modifier = Modifier.height(18.dp))
+                    Text(
+                        text = "Set a recovery question",
+                        fontSize = 26.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = PasscodeColors.TextPrimary,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "If you ever forget your passcode, answering this question lets you reset it.",
+                        fontSize = 15.sp,
+                        lineHeight = 21.sp,
+                        color = PasscodeColors.TextSecondary,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(28.dp))
+
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .menuAnchor(),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                    ExposedDropdownMenu(
-                        expanded = questionDropdownExpanded,
-                        onDismissRequest = { questionDropdownExpanded = false }
+                            .clip(RoundedCornerShape(24.dp))
+                            .background(Color.White.copy(alpha = 0.85f))
+                            .border(1.dp, PasscodeColors.Divider, RoundedCornerShape(24.dp))
+                            .padding(18.dp)
                     ) {
-                        PasscodeManager.DEFAULT_SECURITY_QUESTIONS.forEach { q ->
-                            DropdownMenuItem(
-                                text = { Text(q) },
-                                onClick = {
-                                    selectedQuestion = q
-                                    questionDropdownExpanded = false
-                                }
+                        ExposedDropdownMenuBox(
+                            expanded = questionDropdownExpanded,
+                            onExpandedChange = { questionDropdownExpanded = it }
+                        ) {
+                            OutlinedTextField(
+                                value = selectedQuestion,
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Question") },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = questionDropdownExpanded) },
+                                colors = themedFieldColors(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor(),
+                                shape = RoundedCornerShape(14.dp)
                             )
+                            ExposedDropdownMenu(
+                                expanded = questionDropdownExpanded,
+                                onDismissRequest = { questionDropdownExpanded = false },
+                                modifier = Modifier.background(Color.White)
+                            ) {
+                                PasscodeManager.DEFAULT_SECURITY_QUESTIONS.forEach { q ->
+                                    DropdownMenuItem(
+                                        text = { Text(q, color = PasscodeColors.TextPrimary) },
+                                        onClick = {
+                                            selectedQuestion = q
+                                            questionDropdownExpanded = false
+                                        }
+                                    )
+                                }
+                            }
                         }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        OutlinedTextField(
+                            value = answer,
+                            onValueChange = { answer = it },
+                            label = { Text("Your answer") },
+                            placeholder = { Text("e.g. Fluffy or Dallas") },
+                            singleLine = true,
+                            colors = themedFieldColors(),
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp)
+                        )
+                        Text(
+                            "Answers aren't case-sensitive.",
+                            fontSize = 12.sp,
+                            color = PasscodeColors.TextMuted,
+                            modifier = Modifier.padding(top = 6.dp, start = 4.dp)
+                        )
                     }
-                }
 
-                Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
 
-                OutlinedTextField(
-                    value = answer,
-                    onValueChange = { answer = it },
-                    label = { Text("Your Answer") },
-                    placeholder = { Text("e.g. Fluffy or Dallas") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                )
+                    Button(
+                        onClick = {
+                            if (answer.trim().isNotEmpty()) {
+                                step = 2
+                            }
+                        },
+                        enabled = answer.trim().isNotEmpty(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = PasscodeColors.Ink,
+                            contentColor = Color.White,
+                            disabledContainerColor = PasscodeColors.Divider,
+                            disabledContentColor = PasscodeColors.TextMuted
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
+                        shape = RoundedCornerShape(14.dp)
+                    ) {
+                        Text("Next: Choose a PIN", fontWeight = FontWeight.SemiBold)
+                    }
 
-                Spacer(modifier = Modifier.height(32.dp))
-
-                Button(
-                    onClick = {
-                        if (answer.trim().isNotEmpty()) {
-                            step = 2
-                        }
-                    },
-                    enabled = answer.trim().isNotEmpty(),
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Text("Next: Create Passcode")
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                TextButton(onClick = onCancel) {
-                    Text("Skip for Now", color = Color.Gray)
+                    TextButton(
+                        onClick = onCancel,
+                        colors = ButtonDefaults.textButtonColors(contentColor = PasscodeColors.TextSecondary),
+                        modifier = Modifier.padding(top = 4.dp)
+                    ) {
+                        Text("Skip for now")
+                    }
                 }
             }
         }
         2 -> {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color(0xFFFFFDF9))
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.SpaceBetween
-            ) {
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = "Step 2 of 2: Create Passcode",
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.DarkGray
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Enter a 4-digit PIN",
-                        fontSize = 15.sp,
-                        color = Color.Gray
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    PasscodePinDots(pinLength = chosenPin.length, maxDigits = 4)
-
-                    Spacer(modifier = Modifier.height(32.dp))
+            PinEntryLayout(
+                icon = Icons.Default.Key,
+                title = "Choose a passcode",
+                subtitle = "Pick a 4-digit PIN you'll remember",
+                pinLength = chosenPin.length,
+                isError = false,
+                errorMessage = "",
+                step = 2 to 3,
+                onDigit = { digit ->
+                    if (chosenPin.length < 4) {
+                        val updated = chosenPin + digit
+                        chosenPin = updated
+                        if (updated.length == 4) {
+                            step = 3
+                        }
+                    }
+                },
+                onDelete = {
+                    if (chosenPin.isNotEmpty()) {
+                        chosenPin = chosenPin.dropLast(1)
+                    }
+                },
+                onClear = { chosenPin = "" },
+                footer = {
+                    TextButton(
+                        onClick = {
+                            chosenPin = ""
+                            step = 1
+                        },
+                        colors = ButtonDefaults.textButtonColors(contentColor = PasscodeColors.TextSecondary)
+                    ) { Text("Back") }
                 }
-
-                PasscodeKeypad(
-                    onDigitClick = { digit ->
-                        if (chosenPin.length < 4) {
-                            val updated = chosenPin + digit
-                            chosenPin = updated
-                            if (updated.length == 4) {
-                                step = 3
-                            }
-                        }
-                    },
-                    onDeleteClick = {
-                        if (chosenPin.isNotEmpty()) {
-                            chosenPin = chosenPin.dropLast(1)
-                        }
-                    },
-                    onClearClick = { chosenPin = "" }
-                )
-            }
+            )
         }
         3 -> {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color(0xFFFFFDF9))
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.SpaceBetween
-            ) {
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = "Confirm Passcode",
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.DarkGray
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Re-enter your 4-digit PIN",
-                        fontSize = 15.sp,
-                        color = Color.Gray
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    PasscodePinDots(
-                        pinLength = confirmPin.length,
-                        maxDigits = 4,
-                        isError = isError
-                    )
-
-                    if (isError) {
-                        Text(
-                            text = errorMessage,
-                            color = MaterialTheme.colorScheme.error,
-                            fontSize = 14.sp
-                        )
-                    } else {
-                        Spacer(modifier = Modifier.height(20.dp))
-                    }
-                }
-
-                PasscodeKeypad(
-                    onDigitClick = { digit ->
-                        if (confirmPin.length < 4) {
-                            isError = false
-                            errorMessage = ""
-                            val updated = confirmPin + digit
-                            confirmPin = updated
-                            if (updated.length == 4) {
-                                if (updated == chosenPin) {
-                                    passcodeManager.setupPasscode(chosenPin, selectedQuestion, answer)
-                                    onSetupSuccess()
-                                } else {
-                                    isError = true
-                                    errorMessage = "Passcodes do not match. Try again."
-                                    confirmPin = ""
-                                }
+            PinEntryLayout(
+                icon = Icons.Default.Key,
+                title = "Confirm your passcode",
+                subtitle = "Enter the same 4-digit PIN again",
+                pinLength = confirmPin.length,
+                isError = isError,
+                errorMessage = errorMessage,
+                step = 3 to 3,
+                onDigit = { digit ->
+                    if (confirmPin.length < 4) {
+                        isError = false
+                        errorMessage = ""
+                        val updated = confirmPin + digit
+                        confirmPin = updated
+                        if (updated.length == 4) {
+                            if (updated == chosenPin) {
+                                passcodeManager.setupPasscode(chosenPin, selectedQuestion, answer)
+                                onSetupSuccess()
+                            } else {
+                                isError = true
+                                errorMessage = "Passcodes don't match. Try again."
+                                confirmPin = ""
                             }
                         }
-                    },
-                    onDeleteClick = {
-                        if (confirmPin.isNotEmpty()) {
-                            isError = false
-                            confirmPin = confirmPin.dropLast(1)
-                        }
-                    },
-                    onClearClick = {
-                        confirmPin = ""
-                        isError = false
                     }
-                )
-            }
+                },
+                onDelete = {
+                    if (confirmPin.isNotEmpty()) {
+                        isError = false
+                        confirmPin = confirmPin.dropLast(1)
+                    }
+                },
+                onClear = {
+                    confirmPin = ""
+                    isError = false
+                },
+                footer = {
+                    TextButton(
+                        onClick = {
+                            chosenPin = ""
+                            confirmPin = ""
+                            isError = false
+                            step = 2
+                        },
+                        colors = ButtonDefaults.textButtonColors(contentColor = PasscodeColors.TextSecondary)
+                    ) { Text("Start over") }
+                }
+            )
         }
     }
 }
+
+// =============================================================================================
+// Reset
+// =============================================================================================
 
 @Composable
 private fun ResetContent(
@@ -472,130 +583,83 @@ private fun ResetContent(
     var errorMessage by remember { mutableStateOf("") }
 
     if (step == 1) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color(0xFFFFFDF9))
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = "Reset Passcode",
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.DarkGray
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Enter a new 4-digit PIN",
-                    fontSize = 15.sp,
-                    color = Color.Gray
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                PasscodePinDots(pinLength = newPin.length, maxDigits = 4)
-
-                Spacer(modifier = Modifier.height(32.dp))
-            }
-
-            PasscodeKeypad(
-                onDigitClick = { digit ->
-                    if (newPin.length < 4) {
-                        val updated = newPin + digit
-                        newPin = updated
-                        if (updated.length == 4) {
-                            step = 2
-                        }
+        PinEntryLayout(
+            icon = Icons.Default.LockReset,
+            title = "Reset your passcode",
+            subtitle = "Enter a new 4-digit PIN",
+            pinLength = newPin.length,
+            isError = false,
+            errorMessage = "",
+            step = 1 to 2,
+            onDigit = { digit ->
+                if (newPin.length < 4) {
+                    val updated = newPin + digit
+                    newPin = updated
+                    if (updated.length == 4) {
+                        step = 2
                     }
-                },
-                onDeleteClick = {
-                    if (newPin.isNotEmpty()) newPin = newPin.dropLast(1)
-                },
-                onClearClick = { newPin = "" }
-            )
-        }
+                }
+            },
+            onDelete = {
+                if (newPin.isNotEmpty()) newPin = newPin.dropLast(1)
+            },
+            onClear = { newPin = "" }
+        )
     } else {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color(0xFFFFFDF9))
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = "Confirm New Passcode",
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.DarkGray
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Re-enter your new 4-digit PIN",
-                    fontSize = 15.sp,
-                    color = Color.Gray
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                PasscodePinDots(
-                    pinLength = confirmPin.length,
-                    maxDigits = 4,
-                    isError = isError
-                )
-
-                if (isError) {
-                    Text(
-                        text = errorMessage,
-                        color = MaterialTheme.colorScheme.error,
-                        fontSize = 14.sp
-                    )
-                } else {
-                    Spacer(modifier = Modifier.height(20.dp))
-                }
-            }
-
-            PasscodeKeypad(
-                onDigitClick = { digit ->
-                    if (confirmPin.length < 4) {
-                        isError = false
-                        errorMessage = ""
-                        val updated = confirmPin + digit
-                        confirmPin = updated
-                        if (updated.length == 4) {
-                            if (updated == newPin) {
-                                passcodeManager.resetPasscode(newPin)
-                                onResetSuccess()
-                            } else {
-                                isError = true
-                                errorMessage = "PINs do not match. Try again."
-                                confirmPin = ""
-                            }
+        PinEntryLayout(
+            icon = Icons.Default.LockReset,
+            title = "Confirm new passcode",
+            subtitle = "Enter your new PIN again",
+            pinLength = confirmPin.length,
+            isError = isError,
+            errorMessage = errorMessage,
+            step = 2 to 2,
+            onDigit = { digit ->
+                if (confirmPin.length < 4) {
+                    isError = false
+                    errorMessage = ""
+                    val updated = confirmPin + digit
+                    confirmPin = updated
+                    if (updated.length == 4) {
+                        if (updated == newPin) {
+                            passcodeManager.resetPasscode(newPin)
+                            onResetSuccess()
+                        } else {
+                            isError = true
+                            errorMessage = "PINs don't match. Try again."
+                            confirmPin = ""
                         }
                     }
-                },
-                onDeleteClick = {
-                    if (confirmPin.isNotEmpty()) {
-                        isError = false
-                        confirmPin = confirmPin.dropLast(1)
-                    }
-                },
-                onClearClick = {
-                    confirmPin = ""
-                    isError = false
                 }
-            )
-        }
+            },
+            onDelete = {
+                if (confirmPin.isNotEmpty()) {
+                    isError = false
+                    confirmPin = confirmPin.dropLast(1)
+                }
+            },
+            onClear = {
+                confirmPin = ""
+                isError = false
+            },
+            footer = {
+                TextButton(
+                    onClick = {
+                        newPin = ""
+                        confirmPin = ""
+                        isError = false
+                        step = 1
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = PasscodeColors.TextSecondary)
+                ) { Text("Start over") }
+            }
+        )
     }
 }
+
+// =============================================================================================
+// Forgot passcode
+// =============================================================================================
 
 @Composable
 fun SecurityQuestionResetDialog(
@@ -609,22 +673,40 @@ fun SecurityQuestionResetDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = PasscodeColors.Background,
+        shape = RoundedCornerShape(28.dp),
+        icon = {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(PasscodeColors.AccentSoft)
+            ) {
+                Icon(Icons.Default.LockReset, contentDescription = null, tint = PasscodeColors.Ink)
+            }
+        },
         title = {
-            Text("Reset Passcode", fontWeight = FontWeight.Bold)
+            Text("Forgot your passcode?", fontWeight = FontWeight.Bold, color = PasscodeColors.TextPrimary, textAlign = TextAlign.Center)
         },
         text = {
             Column {
                 Text(
-                    text = "Answer your recovery question to reset your passcode:",
+                    text = "Answer your recovery question to set a new passcode.",
                     fontSize = 14.sp,
-                    color = Color.DarkGray
+                    color = PasscodeColors.TextSecondary
                 )
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(14.dp))
                 Text(
                     text = question,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 15.sp,
-                    color = MaterialTheme.colorScheme.primary
+                    color = PasscodeColors.TextPrimary,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(PasscodeColors.AccentSoft.copy(alpha = 0.6f))
+                        .padding(12.dp)
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 OutlinedTextField(
@@ -633,17 +715,18 @@ fun SecurityQuestionResetDialog(
                         answerInput = it
                         isError = false
                     },
-                    label = { Text("Your Answer") },
+                    label = { Text("Your answer") },
                     singleLine = true,
                     isError = isError,
+                    colors = themedFieldColors(),
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(14.dp)
                 )
                 if (isError) {
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "Incorrect answer. Please try again.",
-                        color = MaterialTheme.colorScheme.error,
+                        text = "That answer doesn't match. Please try again.",
+                        color = PasscodeColors.Error,
                         fontSize = 12.sp
                     )
                 }
@@ -658,14 +741,26 @@ fun SecurityQuestionResetDialog(
                         isError = true
                     }
                 },
-                enabled = answerInput.trim().isNotEmpty()
+                enabled = answerInput.trim().isNotEmpty(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = PasscodeColors.Ink,
+                    contentColor = Color.White,
+                    disabledContainerColor = PasscodeColors.Divider,
+                    disabledContentColor = PasscodeColors.TextMuted
+                ),
+                shape = RoundedCornerShape(14.dp)
             ) {
-                Text("Verify")
+                Text("Verify", fontWeight = FontWeight.SemiBold)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
+            OutlinedButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = PasscodeColors.TextPrimary),
+                border = BorderStroke(1.dp, PasscodeColors.Divider),
+                shape = RoundedCornerShape(14.dp)
+            ) {
+                Text("Cancel", fontWeight = FontWeight.SemiBold)
             }
         }
     )
