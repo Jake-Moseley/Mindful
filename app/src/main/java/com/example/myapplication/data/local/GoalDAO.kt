@@ -38,8 +38,16 @@ interface GoalDAO {
     @Query("SELECT DISTINCT date FROM goal_completions ORDER BY date DESC")
     fun getCompletionDates(): Flow<List<String>>
 
+    /** Every completion ever recorded. Used by the Weekly Story to connect goals and mood. */
+    @Query("SELECT * FROM goal_completions")
+    fun getAllCompletions(): Flow<List<GoalCompletion>>
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertCompletion(completion: GoalCompletion)
+
+    /** Testing tools only: clears all goal history. */
+    @Query("DELETE FROM goal_completions")
+    suspend fun deleteAllCompletions()
 
     @Query("DELETE FROM goal_completions WHERE goalId = :goalId AND date = :date")
     suspend fun deleteCompletion(goalId: Int, date: String)
