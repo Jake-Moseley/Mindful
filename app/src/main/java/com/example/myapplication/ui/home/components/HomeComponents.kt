@@ -59,6 +59,28 @@ import java.time.Duration
 import java.util.Locale
 import com.example.myapplication.ui.mood.MoodType
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.material.icons.filled.CloseFullscreen
+import androidx.compose.material.icons.filled.OpenInFull
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.animation.Crossfade
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
@@ -178,7 +200,7 @@ fun DashboardCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .aspectRatio(0.85f)
+            .aspectRatio(if (LocalWideWidget.current) 2.1f else 0.85f)
             .pressBounce(interactionSource)
             .clickable(interactionSource = interactionSource, indication = LocalIndication.current) { onClick() },
         colors = CardDefaults.cardColors(containerColor = backgroundColor),
@@ -481,6 +503,209 @@ fun InsightWidgetCard(
                     )
                 }
             }
+        }
+    }
+}
+
+// =============================================================================================
+// Home screen editing
+// =============================================================================================
+
+/** True when the widget being drawn spans both columns; DashboardCard uses it to pick its shape. */
+val LocalWideWidget = compositionLocalOf { false }
+
+private val Charcoal = Color(0xFF2B2B2B)
+private val RemoveRed = Color(0xFFB3261E)
+
+/** How long a widget has to be held to start editing the home screen. */
+const val EDIT_HOLD_MILLIS = 4000L
+
+/**
+ * Wraps a home widget so it can be edited. Holding it for [EDIT_HOLD_MILLIS] calls [onStartEditing];
+ * a bar along the bottom of the card fills up while the finger is down.
+ * While [editing], it wiggles, taps on the card are blocked, and remove/resize buttons appear.
+ * [dragModifier] is applied to the editing layer so the home screen can handle drag-to-move.
+ */
+@Composable
+fun EditableWidget(
+    editing: Boolean,
+    wide: Boolean,
+    canResize: Boolean,
+    label: String,
+    wiggleSeed: Int,
+    onStartEditing: () -> Unit,
+    onRemove: () -> Unit,
+    onToggleSize: () -> Unit,
+    dragModifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    val haptics = LocalHapticFeedback.current
+    val scope = rememberCoroutineScope()
+    val hold = remember { Animatable(0f) }
+    val wiggle = if (editing) {
+        val transition = rememberInfiniteTransition(label = "wiggle")
+        val angle by transition.animateFloat(
+            initialValue = -1.1f,
+            targetValue = 1.1f,
+            // Slightly different speeds and directions so the widgets don't move in lockstep
+            animationSpec = infiniteRepeatable(tween(140 + (wiggleSeed % 3) * 25), RepeatMode.Reverse),
+            label = "wiggleAngle"
+        )
+        if (wiggleSeed % 2 == 0) angle else -angle
+    } else 0f
+
+    Box(
+        modifier = Modifier
+            .graphicsLayer { rotationZ = wiggle }
+            .then(
+                if (editing) Modifier
+                else Modifier.holdToEdit(
+                    holdMillis = EDIT_HOLD_MILLIS,
+                    onHoldStart = {
+                        scope.launch {
+                            hold.snapTo(0f)
+                            hold.animateTo(1f, tween(EDIT_HOLD_MILLIS.toInt(), easing = LinearEasing))
+                        }
+                    },
+                    onHoldCancel = { scope.launch { hold.animateTo(0f, tween(150)) } },
+                    onHeld = {
+                        scope.launch { hold.snapTo(0f) }
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onStartEditing()
+                    }
+                )
+            )
+    ) {
+        CompositionLocalProvider(LocalWideWidget provides wide) { content() }
+
+        // Fills while holding; hidden for the first moment so ordinary taps don't flash it
+        if (hold.value > 0.08f) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(horizontal = 22.dp, vertical = 10.dp)
+                    .fillMaxWidth()
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(Color.Black.copy(alpha = 0.08f))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(hold.value)
+                        .fillMaxHeight()
+                        .background(Charcoal.copy(alpha = 0.6f))
+                )
+            }
+        }
+
+        if (editing) {
+            // Sits over the card: blocks taps on it and receives drags
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .then(dragModifier)
+                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
+            )
+        }
+        AnimatedVisibility(
+            visible = editing,
+            enter = scaleIn() + fadeIn(),
+            exit = scaleOut() + fadeOut(),
+            modifier = Modifier.align(Alignment.TopEnd).padding(10.dp)
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (canResize) {
+                    EditBadge(
+                        icon = if (wide) Icons.Default.CloseFullscreen else Icons.Default.OpenInFull,
+                        description = if (wide) "Make $label smaller" else "Make $label wider",
+                        background = Color.White,
+                        tint = Charcoal,
+                        onClick = onToggleSize
+                    )
+                }
+                EditBadge(
+                    icon = Icons.Default.Remove,
+                    description = "Remove $label",
+                    background = RemoveRed,
+                    tint = Color.White,
+                    onClick = onRemove
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun EditBadge(icon: ImageVector, description: String, background: Color, tint: Color, onClick: () -> Unit) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(30.dp)
+            .shadow(3.dp, CircleShape)
+            .clip(CircleShape)
+            .background(background)
+            .clickable(onClickLabel = description) { onClick() }
+            .semantics { contentDescription = description }
+    ) {
+        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(16.dp))
+    }
+}
+
+/**
+ * Calls [onHeld] when the user keeps a finger still on the widget for [holdMillis]. Listens before the
+ * card does, so after the hold the card's own tap is cancelled, and scrolling still works normally.
+ */
+private fun Modifier.holdToEdit(
+    holdMillis: Long,
+    onHoldStart: () -> Unit,
+    onHoldCancel: () -> Unit,
+    onHeld: () -> Unit
+): Modifier = pointerInput(Unit) {
+    awaitEachGesture {
+        val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+        onHoldStart()
+        // Finishes early (non-null) if the finger lifts or moves; times out (null) once held long enough
+        val endedEarly = withTimeoutOrNull(holdMillis) {
+            while (true) {
+                val change = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == down.id } ?: break
+                if (!change.pressed || (change.position - down.position).getDistance() > viewConfiguration.touchSlop) break
+            }
+        }
+        if (endedEarly != null) {
+            onHoldCancel()
+        } else {
+            onHeld()
+            // Eat the rest of this touch so the card doesn't also register a tap
+            do {
+                val event = awaitPointerEvent(PointerEventPass.Initial)
+                event.changes.forEach { it.consume() }
+            } while (event.changes.any { it.pressed })
+        }
+    }
+}
+
+/** Shown when every widget has been removed. */
+@Composable
+fun EmptyHomeCard(onAddWidgets: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.7f)),
+        shape = RoundedCornerShape(24.dp),
+        border = BorderStroke(1.dp, Color.White)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text("Your home screen is empty", fontWeight = FontWeight.Bold, color = Charcoal, fontSize = 17.sp)
+            Spacer(modifier = Modifier.height(4.dp))
+            Text("Add widgets back from Settings.", color = Color.Gray, fontSize = 14.sp)
+            Spacer(modifier = Modifier.height(14.dp))
+            Button(
+                onClick = onAddWidgets,
+                colors = ButtonDefaults.buttonColors(containerColor = Charcoal, contentColor = Color.White),
+                shape = RoundedCornerShape(14.dp)
+            ) { Text("Add widgets", fontWeight = FontWeight.SemiBold) }
         }
     }
 }

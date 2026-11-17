@@ -12,6 +12,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.myapplication.data.security.PasscodeManager
 import com.example.myapplication.ui.goals.GoalsScreen
 import com.example.myapplication.ui.goals.GoalsViewModel
+import com.example.myapplication.ui.home.HomeLayoutViewModel
 import com.example.myapplication.ui.home.HomeScreen
 import com.example.myapplication.ui.insights.InsightsScreen
 import com.example.myapplication.ui.insights.InsightsViewModel
@@ -22,6 +23,7 @@ import com.example.myapplication.ui.quotes.QuoteScreen
 import com.example.myapplication.ui.resources.ResourcesScreen
 import com.example.myapplication.ui.security.PasscodeMode
 import com.example.myapplication.ui.security.PasscodeScreen
+import com.example.myapplication.ui.settings.SettingsScreen
 import com.example.myapplication.ui.text.TextScreen
 
 @Composable
@@ -29,6 +31,7 @@ fun MindfulApp() {
     val navController = rememberNavController()
     val goalsViewModel: GoalsViewModel = viewModel()
     val insightsViewModel: InsightsViewModel = viewModel()
+    val homeLayoutViewModel: HomeLayoutViewModel = viewModel()
     val context = LocalContext.current
     val passcodeManager = remember { PasscodeManager(context) }
     val isLocked = remember { mutableStateOf(passcodeManager.isPasscodeEnabled()) }
@@ -59,13 +62,13 @@ fun MindfulApp() {
                 mode = PasscodeMode.SETUP,
                 onSuccess = {
                     isLocked.value = false
-                    navController.navigate("home") {
-                        popUpTo("passcode_setup") { inclusive = true }
-                    }
+                    // Go back to where setup was opened from (home or Settings)
+                    if (!navController.popBackStack()) navController.navigate("home")
                 }
             )
         }
-        composable("home") { HomeScreen(navController, goalsViewModel, insightsViewModel) }
+        composable("home") { HomeScreen(navController, goalsViewModel, insightsViewModel, homeLayoutViewModel) }
+        composable("settings") { SettingsScreen(navController, homeLayoutViewModel) }
         composable("journal") { JournalScreen(navController) }
         composable("text") { TextScreen(navController) }
         composable("mood") { MoodScreen(navController) }

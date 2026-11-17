@@ -35,8 +35,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -64,6 +62,21 @@ import com.example.myapplication.ui.mood.MoodViewModelFactory
 import org.json.JSONArray
 import java.time.LocalDate
 import java.util.Calendar
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.VisibilityThreshold
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.toOffset
+import androidx.compose.ui.zIndex
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.border
+import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.material.icons.outlined.Settings
 import kotlin.random.Random
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -80,6 +93,7 @@ fun HomeScreen(
     navController: NavController,
     goalsViewModel: GoalsViewModel = viewModel(),
     insightsViewModel: InsightsViewModel = viewModel(),
+    layoutViewModel: HomeLayoutViewModel = viewModel(),
     healthViewModel: HealthViewModel = viewModel()
 ) {
     val context = LocalContext.current
@@ -87,7 +101,9 @@ fun HomeScreen(
     var showOptInDialog by remember {
         mutableStateOf(!passcodeManager.hasPromptedOnboarding() && !passcodeManager.isPasscodeEnabled())
     }
-    var showSecuritySettingsDialog by remember { mutableStateOf(false) }
+
+    // Back leaves edit mode instead of the screen
+    BackHandler(enabled = layoutViewModel.isEditing) { layoutViewModel.isEditing = false }
 
     // Setup ViewModel for Mood
     val db = AppDB.getDatabase(context)
@@ -228,101 +244,197 @@ fun HomeScreen(
                         DailyQuote(quote = quotes[quoteIndex], onShuffle = onShuffleQuote)
                     }
 
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFF70DDF2)) // Cyan profile circle
-                            .clickable { showSecuritySettingsDialog = true },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Default.Person, contentDescription = "Profile & Security", tint = Color.DarkGray)
+                    if (layoutViewModel.isEditing) {
+                        Button(
+                            onClick = { layoutViewModel.isEditing = false },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2B2B2B), contentColor = Color.White),
+                            shape = RoundedCornerShape(50),
+                            contentPadding = PaddingValues(horizontal = 18.dp, vertical = 8.dp)
+                        ) { Text("Done", fontWeight = FontWeight.SemiBold) }
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .background(Color.White.copy(alpha = 0.7f))
+                                .border(1.dp, Color.White, CircleShape)
+                                .clickable(onClickLabel = "Open settings") { navController.navigate("settings") },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Outlined.Settings, contentDescription = "Settings", tint = Color(0xFF2B2B2B))
+                        }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            if (layoutViewModel.isEditing) {
+                Spacer(modifier = Modifier.height(16.dp))
+                EditModeHint(
+                    hiddenCount = layoutViewModel.hiddenWidgets.size,
+                    onAddWidgets = { navController.navigate("settings") }
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+            } else {
+                Spacer(modifier = Modifier.height(32.dp))
+            }
+
+            // In a crisis the Weekly Story shows support options, so it comes back even if it was removed
+            val isCrisis = insightLevel == ConcernLevel.CRISIS
+            val shownSlots = layoutViewModel.visibleSlots.let { visible ->
+                if (isCrisis && visible.none { it.widget == HomeWidget.INSIGHT }) {
+                    listOf(WidgetSlot(HomeWidget.INSIGHT, wide = true)) + visible
+                } else visible
+            }
+
+            // Drag-to-move while editing. dragStart is where the widget sat when the drag began and
+            // dragDelta is how far the finger has moved since, so the widget stays under the finger
+            // even as the grid reshuffles around it.
+            val gridState = rememberLazyGridState()
+            val haptics = LocalHapticFeedback.current
+            var dragging by remember { mutableStateOf<HomeWidget?>(null) }
+            var dragStart by remember { mutableStateOf(Offset.Zero) }
+            var dragDelta by remember { mutableStateOf(Offset.Zero) }
+            var lastSwapTarget by remember { mutableStateOf<HomeWidget?>(null) }
+            fun itemInfo(widget: HomeWidget) = gridState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == widget.name }
+            fun dragModifierFor(widget: HomeWidget) = Modifier.pointerInput(widget) {
+                detectDragGesturesAfterLongPress(
+                    onDragStart = {
+                        val info = itemInfo(widget) ?: return@detectDragGesturesAfterLongPress
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        dragging = widget
+                        dragStart = info.offset.toOffset()
+                        dragDelta = Offset.Zero
+                        lastSwapTarget = null
+                    },
+                    onDrag = { change, amount ->
+                        val current = dragging ?: return@detectDragGesturesAfterLongPress
+                        change.consume()
+                        dragDelta += amount
+                        val info = itemInfo(current) ?: return@detectDragGesturesAfterLongPress
+                        val center = dragStart + dragDelta + Offset(info.size.width / 2f, info.size.height / 2f)
+
+                        // Swap with whichever widget the dragged one's center is over
+                        val target = gridState.layoutInfo.visibleItemsInfo.firstOrNull { item ->
+                            item.key != current.name &&
+                                center.x >= item.offset.x && center.x <= item.offset.x + item.size.width &&
+                                center.y >= item.offset.y && center.y <= item.offset.y + item.size.height
+                        }?.let { item -> HomeWidget.entries.firstOrNull { it.name == item.key } }
+                        if (target != null && target != lastSwapTarget) {
+                            layoutViewModel.moveTo(current, target)
+                        }
+                        lastSwapTarget = target
+
+                        // Scroll when dragged near the top or bottom edge
+                        val top = dragStart.y + dragDelta.y
+                        val edge = 72.dp.toPx()
+                        val viewportEnd = gridState.layoutInfo.viewportEndOffset
+                        when {
+                            top + info.size.height > viewportEnd - edge -> gridState.dispatchRawDelta(14f)
+                            top < edge && gridState.canScrollBackward -> gridState.dispatchRawDelta(-14f)
+                        }
+                    },
+                    onDragEnd = { dragging = null },
+                    onDragCancel = { dragging = null }
+                )
+            }
 
             // Widgets Grid
             LazyVerticalGrid(
+                state = gridState,
                 columns = GridCells.Fixed(2),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 contentPadding = PaddingValues(bottom = 24.dp)
             ) {
-                // Full-width so warning signs are easy to notice on the home page
-                item(span = { GridItemSpan(maxLineSpan) }) {
-                    Entrance(index = 1, played = played) {
-                        val (background, accent) = levelColors(insightLevel)
-                        val isCrisis = insightLevel == ConcernLevel.CRISIS
-                        InsightWidgetCard(
-                            level = insightLevel,
-                            // In a crisis, the card shows support first; otherwise it shows this week's story title
-                            title = if (isCrisis) levelTitle(insightLevel) else (aiInsight.insight?.summary ?: weeklyStory.title),
-                            message = if (isCrisis) insightReport.headline
-                            else "${weeklyStory.dateRange} · ${weeklyStory.daysLogged} of 7 days logged",
-                            backgroundColor = background,
-                            accentColor = accent,
-                            onClick = { navController.navigate("insights") }
-                        )
+                if (shownSlots.isEmpty()) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        EmptyHomeCard(onAddWidgets = { navController.navigate("settings") })
                     }
                 }
-                item {
-                    Entrance(index = 2, played = played) {
-                        MoodWidgetCard(
-                            mood = todayMood,
-                            onClick = { navController.navigate("mood") }
-                        )
-                    }
-                }
-                item {
-                    Entrance(index = 3, played = played) {
-                        GoalsWidgetCard(
-                            completedGoals = goalsViewModel.completedGoals,
-                            totalGoals = goalsViewModel.goals.size,
-                            onClick = { navController.navigate("goals") }
-                        )
-                    }
-                }
-                item {
-                    Entrance(index = 4, played = played) {
-                        // Days in a row with at least one goal completed
-                        StreakWidgetCard(
-                            days = goalsViewModel.streak,
-                            onClick = { navController.navigate("goals") }
-                        )
-                    }
-                }
-                item {
-                    Entrance(index = 5, played = played) {
-                        SleepWidgetCard(
-                            status = health.status,
-                            sleep = health.sleepLastNight,
-                            onClick = onHealthCardClick
-                        )
-                    }
-                }
-                item {
-                    Entrance(index = 6, played = played) {
-                        HydrationWidgetCard(
-                            status = health.status,
-                            liters = health.waterTodayLiters,
-                            onClick = onHealthCardClick
-                        )
-                    }
-                }
-                item {
-                    Entrance(index = 7, played = played) {
-                        ResourceWidgetCard(
-                            onClick = { navController.navigate("resources") }
-                        )
-                    }
-                }
-                item {
-                    Entrance(index = 8, played = played) {
-                        JournalWidgetCard(
-                            onClick = { navController.navigate("journal") }
-                        )
+                itemsIndexed(
+                    items = shownSlots,
+                    key = { _, slot -> slot.widget.name },
+                    span = { _, slot -> GridItemSpan(if (slot.wide) maxLineSpan else 1) }
+                ) { index, slot ->
+                    val isDragged = dragging == slot.widget
+                    Box(
+                        modifier = Modifier
+                            // The dragged widget follows the finger instead of animating to its new spot
+                            .animateItem(placementSpec = if (isDragged) null else spring(stiffness = Spring.StiffnessMediumLow, visibilityThreshold = IntOffset.VisibilityThreshold))
+                            .then(
+                                if (isDragged) Modifier
+                                    .zIndex(1f)
+                                    .graphicsLayer {
+                                        val current = itemInfo(slot.widget)?.offset?.toOffset() ?: dragStart
+                                        val shift = dragStart + dragDelta - current
+                                        translationX = shift.x
+                                        translationY = shift.y
+                                        scaleX = 1.05f
+                                        scaleY = 1.05f
+                                        shadowElevation = 24f
+                                    }
+                                else Modifier
+                            )
+                    ) {
+                        Entrance(index = index + 1, played = played) {
+                            EditableWidget(
+                                editing = layoutViewModel.isEditing,
+                                wide = slot.wide,
+                                canResize = slot.widget.canResize,
+                                label = slot.widget.label,
+                                wiggleSeed = index,
+                                onStartEditing = { layoutViewModel.isEditing = true },
+                                onRemove = { layoutViewModel.remove(slot.widget) },
+                                onToggleSize = { layoutViewModel.toggleSize(slot.widget) },
+                                dragModifier = dragModifierFor(slot.widget)
+                            ) {
+                                when (slot.widget) {
+                                    HomeWidget.INSIGHT -> {
+                                        val (background, accent) = levelColors(insightLevel)
+                                        InsightWidgetCard(
+                                            level = insightLevel,
+                                            // In a crisis, the card shows support first; otherwise it shows this week's story title
+                                            title = if (isCrisis) levelTitle(insightLevel) else (aiInsight.insight?.summary ?: weeklyStory.title),
+                                            message = if (isCrisis) insightReport.headline
+                                            else "${weeklyStory.dateRange} · ${weeklyStory.daysLogged} of 7 days logged",
+                                            backgroundColor = background,
+                                            accentColor = accent,
+                                            onClick = { navController.navigate("insights") }
+                                        )
+                                    }
+                                    HomeWidget.MOOD -> MoodWidgetCard(
+                                        mood = todayMood,
+                                        onClick = { navController.navigate("mood") }
+                                    )
+                                    HomeWidget.GOALS -> GoalsWidgetCard(
+                                        completedGoals = goalsViewModel.completedGoals,
+                                        totalGoals = goalsViewModel.goals.size,
+                                        onClick = { navController.navigate("goals") }
+                                    )
+                                    // Days in a row with at least one goal completed
+                                    HomeWidget.STREAK -> StreakWidgetCard(
+                                        days = goalsViewModel.streak,
+                                        onClick = { navController.navigate("goals") }
+                                    )
+                                    HomeWidget.SLEEP -> SleepWidgetCard(
+                                        status = health.status,
+                                        sleep = health.sleepLastNight,
+                                        onClick = onHealthCardClick
+                                    )
+                                    HomeWidget.WATER -> HydrationWidgetCard(
+                                        status = health.status,
+                                        liters = health.waterTodayLiters,
+                                        onClick = onHealthCardClick
+                                    )
+                                    HomeWidget.RESOURCES -> ResourceWidgetCard(
+                                        onClick = { navController.navigate("resources") }
+                                    )
+                                    HomeWidget.JOURNAL -> JournalWidgetCard(
+                                        onClick = { navController.navigate("journal") }
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -334,7 +446,7 @@ fun HomeScreen(
         ThemedDialog(
             icon = Icons.Default.Lock,
             title = "Protect your privacy",
-            message = "Set up a 4-digit passcode to keep your journal and reflections private. You can change this anytime from the profile button.",
+            message = "Set up a 4-digit passcode to keep your journal and reflections private. You can change this anytime in Settings.",
             primaryLabel = "Set up passcode",
             onPrimary = {
                 passcodeManager.setPromptedOnboarding(true)
@@ -352,53 +464,38 @@ fun HomeScreen(
             }
         )
     }
+}
 
-    if (showSecuritySettingsDialog) {
-        var isEnabled by remember { mutableStateOf(passcodeManager.isPasscodeEnabled()) }
-        ThemedDialog(
-            icon = Icons.Default.Security,
-            title = "Security & passcode",
-            status = {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(50))
-                        .background(if (isEnabled) Color(0xFFD7F2DF) else Color(0xFFF7F3EE))
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(if (isEnabled) Color(0xFF1E6B3A) else Color(0xFFA8A29E))
-                    )
-                    Text(
-                        if (isEnabled) "  Passcode lock is on" else "  Passcode lock is off",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (isEnabled) Color(0xFF1E6B3A) else Color(0xFF6B6B6B)
-                    )
-                }
-            },
-            message = if (isEnabled) "Mindful asks for your 4-digit PIN every time it opens."
-            else "Add a 4-digit PIN and a recovery question to keep your journal private.",
-            primaryLabel = if (isEnabled) "Change PIN" else "Turn on passcode",
-            onPrimary = {
-                showSecuritySettingsDialog = false
-                navController.navigate("passcode_setup")
-            },
-            secondaryLabel = if (isEnabled) "Turn off" else "Close",
-            secondaryIsDestructive = isEnabled,
-            onSecondary = {
-                if (isEnabled) {
-                    passcodeManager.disablePasscode()
-                    isEnabled = false
-                } else {
-                    showSecuritySettingsDialog = false
-                }
-            },
-            onDismiss = { showSecuritySettingsDialog = false }
+/** Shown under the header while editing widgets. */
+@Composable
+private fun EditModeHint(hiddenCount: Int, onAddWidgets: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color.White.copy(alpha = 0.7f))
+            .padding(horizontal = 14.dp, vertical = 10.dp)
+    ) {
+        Text(
+            text = "Hold and drag to move. Tap − to remove or the arrows to resize.",
+            fontSize = 13.sp,
+            color = Color(0xFF5E5E5E),
+            modifier = Modifier.weight(1f)
         )
+        if (hiddenCount > 0) {
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "+ Add ($hiddenCount)",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF2B2B2B),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50))
+                    .clickable(onClickLabel = "Add widgets back") { onAddWidgets() }
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            )
+        }
     }
 }
 
