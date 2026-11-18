@@ -99,6 +99,7 @@ import androidx.navigation.NavController
 import com.example.myapplication.data.ai.AiInsight
 import com.example.myapplication.data.ai.AnalysisConsent
 import com.example.myapplication.data.ai.ConcernLevel
+import com.example.myapplication.data.ai.Highlight
 import com.example.myapplication.data.ai.Evidence
 import com.example.myapplication.data.ai.SmallStep
 import com.example.myapplication.data.ai.WeeklyStory
@@ -149,6 +150,7 @@ private enum class StoryPage(val top: Color, val bottom: Color) {
     CRISIS(Color(0xFFFDE2E1), Color(0xFFFFF5F4)),
     COVER(Color(0xFFFBE6CD), Color(0xFFDDF4F8)),
     CONSENT(Color(0xFFEDE7F6), Color(0xFFFFFDF9)),
+    RECAP(Color(0xFFFFF1E0), Color(0xFFFFFDF9)),
     FELT(Color(0xFFDDF4F8), Color(0xFFF4FBFC)),
     LIFTED(Color(0xFFD7F2DF), Color(0xFFFFF8E1)),
     WEIGHED(Color(0xFFE6E3F0), Color(0xFFF6F3EE)),
@@ -192,7 +194,7 @@ fun InsightsScreen(navController: NavController, viewModel: InsightsViewModel = 
         if (isCrisis) add(StoryPage.CRISIS)
         add(StoryPage.COVER)
         if (consent == AnalysisConsent.NOT_ASKED && story.isCurrentWeek && !isCrisis) add(StoryPage.CONSENT)
-        addAll(listOf(StoryPage.FELT, StoryPage.LIFTED, StoryPage.WEIGHED, StoryPage.AHEAD, StoryPage.WRAP))
+        addAll(listOf(StoryPage.RECAP, StoryPage.FELT, StoryPage.LIFTED, StoryPage.WEIGHED, StoryPage.AHEAD, StoryPage.WRAP))
     }
     val pagerState = rememberPagerState(pageCount = { pages.size })
     val currentPage = pages.getOrElse(pagerState.currentPage) { StoryPage.COVER }
@@ -300,6 +302,11 @@ fun InsightsScreen(navController: NavController, viewModel: InsightsViewModel = 
                                 onAllowAi = { viewModel.setConsent(AnalysisConsent.AI_ALLOWED) },
                                 onKeepLocal = { viewModel.setConsent(AnalysisConsent.ON_DEVICE_ONLY) }
                             )
+                            StoryPage.RECAP -> RecapPage(
+                                visible = visible,
+                                story = story,
+                                recap = ai?.recap ?: story.recap
+                            )
                             StoryPage.FELT -> ChapterPage(
                                 visible = visible, number = 1, title = "How you felt",
                                 hero = "🌈", heroMotion = HeroMotion.POP,
@@ -315,11 +322,25 @@ fun InsightsScreen(navController: NavController, viewModel: InsightsViewModel = 
                                 evidence = story.lifted.evidence
                             )
                             StoryPage.WEIGHED -> ChapterPage(
-                                visible = visible, number = 3, title = "What weighed on you",
+                                visible = visible, number = 3, title = "What asked a lot of you",
                                 hero = "☁️", heroMotion = HeroMotion.DRIFT,
                                 narrative = ai?.weighed ?: story.weighed.narrative,
                                 evidence = story.weighed.evidence
-                            )
+                            ) {
+                                if (story.heavyWriting) {
+                                    Reveal(visible, 600) {
+                                        Button(
+                                            onClick = { navController.navigate("resources") },
+                                            colors = ButtonDefaults.buttonColors(containerColor = StoryColors.Ink, contentColor = Color.White),
+                                            shape = RoundedCornerShape(14.dp),
+                                            modifier = Modifier
+                                                .padding(top = 16.dp)
+                                                .fillMaxWidth()
+                                                .height(50.dp)
+                                        ) { Text("Find someone to talk to", fontWeight = FontWeight.SemiBold) }
+                                    }
+                                }
+                            }
                             StoryPage.AHEAD -> AheadPage(
                                 visible = visible,
                                 isCurrentWeek = story.isCurrentWeek,
@@ -719,6 +740,86 @@ private fun ChapterPage(
                 EvidenceRow(item, modifier = Modifier.padding(bottom = 8.dp))
             }
         }
+    }
+}
+
+/** "At a glance": a two-sentence recap and a few fun stat tiles that pop in. */
+@Composable
+private fun RecapPage(visible: Boolean, story: WeeklyStory, recap: String) {
+    Spacer(modifier = Modifier.height(20.dp))
+    HeroEmoji("📖", HeroMotion.POP, visible)
+    Spacer(modifier = Modifier.height(20.dp))
+    Reveal(visible, 100) {
+        Text("AT A GLANCE", fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.5.sp, color = StoryColors.TextMuted)
+    }
+    Reveal(visible, 220) {
+        Text(
+            "Your week in a nutshell",
+            fontFamily = FontFamily.Serif,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 32.sp,
+            lineHeight = 38.sp,
+            color = StoryColors.TextPrimary,
+            modifier = Modifier
+                .padding(top = 4.dp)
+                .semantics { heading() }
+        )
+    }
+    Reveal(visible, 420) {
+        Text(
+            recap,
+            fontSize = 18.sp,
+            lineHeight = 27.sp,
+            color = StoryColors.TextPrimary,
+            modifier = Modifier.padding(top = 16.dp)
+        )
+    }
+    if (story.highlights.isNotEmpty()) {
+        Spacer(modifier = Modifier.height(28.dp))
+        story.highlights.chunked(2).forEachIndexed { row, pair ->
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp)
+            ) {
+                pair.forEachIndexed { col, tile ->
+                    HighlightTile(tile, visible, delayMs = 700 + (row * 2 + col) * 150, modifier = Modifier.weight(1f))
+                }
+                if (pair.size == 1) Spacer(modifier = Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+/** A stat tile that springs in: big emoji, the value, and a small label. */
+@Composable
+private fun HighlightTile(tile: Highlight, visible: Boolean, delayMs: Int, modifier: Modifier = Modifier) {
+    val scale = remember { Animatable(0f) }
+    LaunchedEffect(visible) {
+        if (visible) {
+            delay(delayMs.toLong())
+            scale.animateTo(1f, spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessLow))
+        } else scale.snapTo(0f)
+    }
+    Column(
+        modifier = modifier
+            .scale(scale.value)
+            .clip(RoundedCornerShape(20.dp))
+            .background(StoryColors.Glass)
+            .padding(horizontal = 14.dp, vertical = 16.dp)
+            .semantics(mergeDescendants = true) {}
+    ) {
+        Text(tile.emoji, fontSize = 28.sp)
+        Text(
+            tile.value,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            color = StoryColors.TextPrimary,
+            maxLines = 1,
+            modifier = Modifier.padding(top = 6.dp)
+        )
+        Text(tile.label, fontSize = 12.sp, color = StoryColors.TextSecondary)
     }
 }
 

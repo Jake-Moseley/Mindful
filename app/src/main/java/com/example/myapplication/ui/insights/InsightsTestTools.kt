@@ -58,7 +58,7 @@ import java.time.LocalDate
 /** A ready-made month of data. Each one is designed to tell a different Weekly Story. */
 enum class TestScenario(val label: String, val expected: String) {
     STEADY("Steady month", "\"A bright, steady week\" with goal and friends bright spots"),
-    MONDAY_BLUES("Tired on Mondays", "\"Mondays tend to be harder\" in What weighed on you"),
+    MONDAY_BLUES("Tired on Mondays", "\"Mondays seem to ask more of you\" in What asked a lot of you"),
     TOUGH_WEEK("Tough week at work", "Work on hard days, goals lifting your mood, a falling week"),
     ELEVATED("Rough two weeks", "Orange check-in with a \"Find a professional\" nudge"),
     CRISIS("Crisis journal entry", "Red crisis card with 988")

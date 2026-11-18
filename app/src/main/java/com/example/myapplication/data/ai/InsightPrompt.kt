@@ -9,6 +9,8 @@ import java.time.LocalDate
 data class AiInsight(
     /** Short story title, e.g. "A slow start, a strong finish." Also shown on the home card. */
     val summary: String,
+    /** A detailed 3-5 sentence recap that connects moods to what the user wrote. */
+    val recap: String?,
     val felt: String?,
     val lifted: String?,
     val weighed: String?,
@@ -29,7 +31,7 @@ data class AiInsight(
 object InsightPrompt {
 
     const val MAX_JOURNAL_ENTRIES = 7
-    const val MAX_JOURNAL_CHARS = 400
+    const val MAX_JOURNAL_CHARS = 600
     const val MAX_STEP_LENGTH = 40
 
     fun build(story: WeeklyStory, journals: List<JournalEntry>): String {
@@ -45,6 +47,23 @@ object InsightPrompt {
             .joinToString("\n") { (date, text) -> "- $date: \"${text.take(MAX_JOURNAL_CHARS).replace("\n", " ")}\"" }
             .ifEmpty { "(no journal entries this week)" }
 
+        // What the phone found in each day's entry, so Gemini connects moods to the writing
+        val momentLines = story.moments.joinToString("\n") { m ->
+            val day = m.date.dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }
+            val parts = buildList {
+                add("mood: ${m.mood?.label?.lowercase() ?: "not logged"}")
+                if (!m.hasEntry) add("no journal entry")
+                // Only good feelings are passed along by name; hard ones are summarized gently
+                if (m.positiveFeelings.isNotEmpty()) add("good feelings named: ${m.positiveFeelings.joinToString { it.word }}")
+                if (m.heavy) add("some writing sounded very heavy")
+                else if (m.gentleNote != null) add("a harder day")
+                if (m.people.isNotEmpty()) add("people: ${m.people.joinToString()}")
+                if (m.activities.isNotEmpty()) add("activities: ${m.activities.joinToString()}")
+                if (m.topics.isNotEmpty()) add("topics: ${m.topics.joinToString { it.lowercase() }}")
+            }
+            "- $day: ${parts.joinToString("; ")}"
+        }.ifEmpty { "(nothing logged)" }
+
         fun facts(chapter: StoryChapter) =
             chapter.evidence.joinToString("\n") { "  - ${it.text}" }.ifEmpty { "  (none)" }
 
@@ -58,8 +77,27 @@ object InsightPrompt {
             |- Never diagnose or name any medical or mental health condition. This is not medical advice.
             |- Only use the data below. Do not invent events, people or numbers.
             |- Speak to the user as "you". Be warm, specific and honest, never cheesy or preachy.
-            |- Refer to real details (days, moods, topics from their journal) so it feels personal.
-            |- Keep each chapter to 1-2 short sentences.
+            |- Be kind and uplifting. Never repeat the user's difficult words back to them
+            |  (for example "hopeless", "empty", "worthless", "stressed", "anxious"). Describe hard
+            |  moments gently instead ("a lot to carry", "running low on energy", "a tender few days").
+            |- Pair every hard thing with something kind: what they did (checked in, wrote, kept going)
+            |  or a bright spot from the week. Lead with strengths and end on something encouraging.
+            |- Make it feel connected to what they wrote: tie each mood to what they wrote that day,
+            |  name the people, activities and feelings they mentioned, and point out patterns
+            |  (something that keeps coming up, or a mood that doesn't match their words).
+            |- You may quote a few of their own words (under 12 words) in quotation marks, but only
+            |  from good moments. Never quote anything hard, and never anything about self-harm.
+            |- Even if they logged very little (one mood, one entry), write a specific recap from what
+            |  is there. Don't pad it with generic advice, and don't pretend there's a pattern if there isn't.
+            |- Keep it simple and a little fun, like a friendly highlight reel. Short sentences.
+            |- Say each thing only once. The recap is the big picture; each chapter adds something new
+            |  (a pattern, a theme, or a small tip), never the same fact again. Don't repeat counts.
+            |- The recap is 2 sentences: the shape of the week, then one gentle contrast between what
+            |  asked a lot of them and what lifted them. Each chapter is 1-2 sentences.
+            |- In "lifted", name the theme behind their good days (e.g. "time with people you care
+            |  about", "moving your body") rather than retelling a day.
+            |- In "weighed", name what asked the most of them kindly and add one small, practical tip.
+            |${if (story.heavyWriting) "- Some of their writing this week sounded very heavy. Don't describe it. In \"weighed\", gently\n|  say they don't have to carry it alone and that talking to someone they trust or a professional can help." else ""}
             |- The small step must be one concrete action they can do today, written as a goal
             |  (max $MAX_STEP_LENGTH characters, e.g. "Take a 10-minute walk after work").
             |- If the week looks very hard, gently mention that talking to a professional can help.
@@ -71,6 +109,12 @@ object InsightPrompt {
             |$moodLines
             |
             |Goals completed this week: ${story.goalsCompleted}
+            |
+            |Day by day (what the app found in each entry):
+            |$momentLines
+            |
+            |The app's own recap:
+            |${story.recap}
             |
             |Facts the app found:
             |How they felt:
@@ -86,9 +130,10 @@ object InsightPrompt {
             |Reply with only a JSON object in exactly this shape:
             |{
             |  "title": "a 4-8 word title for the week, like a chapter heading",
+            |  "recap": "a short, kind 2 sentence big-picture summary of their week",
             |  "felt": "how they felt this week",
             |  "lifted": "what seemed to lift them, or an empty string if nothing did",
-            |  "weighed": "what seemed to weigh on them, or an empty string if nothing did",
+            |  "weighed": "what asked a lot of them, said gently and paired with something they did, or an empty string",
             |  "smallStep": { "title": "one small action for today", "why": "one sentence on why, tied to their week" },
             |  "question": "one gentle reflection question for their journal",
             |  "concernLevel": "low" | "moderate" | "high"
@@ -108,6 +153,7 @@ object InsightPrompt {
         val step = json.optJSONObject("smallStep")
         return AiInsight(
             summary = title,
+            recap = json.text("recap"),
             felt = json.text("felt"),
             lifted = json.text("lifted"),
             weighed = json.text("weighed"),

@@ -195,7 +195,7 @@ class InsightsViewModel(application: Application) : AndroidViewModel(application
             val data = inputs.first { it.loaded }
             val local = PatternAnalyzer.analyze(data.moods, data.journals, data.goals)
             val today = LocalDate.now()
-            val thisWeek = WeeklyStoryBuilder.build(data.moods, data.journals, data.completions, today, today)
+            val thisWeek = WeeklyStoryBuilder.build(data.moods, data.journals, data.completions, today, today, sleep.value)
             val hash = listOf(data.moods, data.journals, data.completions, today).hashCode()
 
             if (!force && _aiState.value.inputsHash == hash && _aiState.value.insight != null) return@launch
