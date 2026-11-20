@@ -235,7 +235,12 @@ fun DashboardCard(
                 Column {
                     content()
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text(text = title, color = Color.Gray, fontSize = 14.sp)
+                    Text(
+                        text = title,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color(0xFF000000),
+                        fontSize = 20.sp
+                    )
                 }
             }
         }
@@ -258,7 +263,7 @@ fun MoodWidgetCard(mood: MoodType?, onClick: () -> Unit) {
             fontSize = 32.sp,
             modifier = Modifier.graphicsLayer { translationY = bob * density }
         )
-        Text(mood?.label ?: "Log Mood", fontWeight = FontWeight.Bold, color = Color.DarkGray, fontSize = 18.sp)
+        Text(mood?.label ?: "Log Mood", fontWeight = FontWeight.Normal, color = Color.DarkGray, fontSize = 16.sp)
     }
 }
 

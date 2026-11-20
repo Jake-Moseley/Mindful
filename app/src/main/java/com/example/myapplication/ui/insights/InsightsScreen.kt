@@ -839,12 +839,18 @@ private fun EvidenceRow(evidence: Evidence, modifier: Modifier = Modifier) {
 }
 
 /** Positive / Neutral / Difficult bar that grows in from the left. */
+private fun pastelMoodColor(category: MoodCategory): Color = when (category) {
+    MoodCategory.POSITIVE -> Color(0xFF9BE7B8)
+    MoodCategory.NEUTRAL -> Color(0xFF9DE2F2)
+    MoodCategory.DIFFICULT -> Color(0xFFFFB59E)
+}
+
 @Composable
 private fun MoodMixBar(story: WeeklyStory, visible: Boolean) {
     val total = story.daysLogged.coerceAtLeast(1)
     val grow by animateFloatAsState(
         targetValue = if (visible) 1f else 0f,
-        animationSpec = tween(if (visible) 900 else 0, delayMillis = if (visible) 550 else 0, easing = FastOutSlowInEasing),
+        animationSpec = tween(durationMillis = if (visible) 900 else 0, delayMillis = if (visible) 550 else 0),
         label = "mix"
     )
     Spacer(modifier = Modifier.height(20.dp))
@@ -858,7 +864,8 @@ private fun MoodMixBar(story: WeeklyStory, visible: Boolean) {
         Row(
             modifier = Modifier
                 .fillMaxWidth(grow.coerceAtLeast(0.001f))
-                .height(16.dp)
+                .fillMaxHeight(),
+            horizontalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             MoodCategory.entries.forEach { category ->
                 val count = story.categorySplit[category] ?: 0
@@ -867,13 +874,13 @@ private fun MoodMixBar(story: WeeklyStory, visible: Boolean) {
                         modifier = Modifier
                             .weight(count.toFloat())
                             .fillMaxHeight()
-                            .background(category.accent.copy(alpha = 0.6f))
+                            .background(pastelMoodColor(category))
                     )
                 }
             }
         }
     }
-    Reveal(visible, 900) {
+    Reveal(visible = visible, delayMillis = 900) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -887,10 +894,10 @@ private fun MoodMixBar(story: WeeklyStory, visible: Boolean) {
                         modifier = Modifier
                             .size(8.dp)
                             .clip(CircleShape)
-                            .background(category.accent.copy(alpha = 0.6f))
+                            .background(pastelMoodColor(category))
                     )
                     Text(
-                        " ${category.label} ${count * 100 / total}%",
+                        text = " ${category.label} ${count * 100 / total}%",
                         fontSize = 13.sp,
                         color = StoryColors.TextSecondary
                     )
